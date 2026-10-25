@@ -154,7 +154,7 @@
     "svelte": "5.57.1",
     "tslib": "2.8.1",
     "tsup": "^8.5.1",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.11",
     "vue": "3.5.43",
     "vue-router": "4.6.4",
