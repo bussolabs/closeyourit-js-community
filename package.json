@@ -1,0 +1,231 @@
+{
+  "name": "@bussolabs/closeyourit-js",
+  "version": "0.15.0",
+  "description": "CloseYourIt browser SDK: error monitoring, logs, cookieless website analytics and session replay (self-hosted, Sentry-compatible wire format)",
+  "keywords": [
+    "closeyourit",
+    "close-your-it",
+    "error-monitoring",
+    "error-tracking",
+    "web-analytics",
+    "cookieless-analytics",
+    "pageviews",
+    "session-replay",
+    "logging",
+    "sentry-compatible"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bussolabs/closeyourit-js.git"
+  },
+  "license": "MIT",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/closeyourit.min.js",
+  "jsdelivr": "./dist/closeyourit.min.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./min": "./dist/closeyourit.min.js",
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.mjs",
+      "require": "./dist/react.js"
+    },
+    "./next/server": {
+      "types": "./dist/next/server.d.ts",
+      "import": "./dist/next/server.mjs",
+      "require": "./dist/next/server.js"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.ts",
+      "import": "./dist/vue.mjs",
+      "require": "./dist/vue.js"
+    },
+    "./nuxt/client": {
+      "types": "./dist/nuxt/client.d.ts",
+      "import": "./dist/nuxt/client.mjs",
+      "require": "./dist/nuxt/client.js"
+    },
+    "./nuxt/server": {
+      "types": "./dist/nuxt/server.d.ts",
+      "import": "./dist/nuxt/server.mjs",
+      "require": "./dist/nuxt/server.js"
+    },
+    "./helpdesk": {
+      "types": "./dist/helpdesk.d.ts",
+      "import": "./dist/helpdesk.mjs",
+      "require": "./dist/helpdesk.js"
+    },
+    "./helpdesk/min": "./dist/helpdesk.min.js",
+    "./angular": {
+      "types": "./dist/angular.d.ts",
+      "import": "./dist/angular.mjs",
+      "require": "./dist/angular.js"
+    },
+    "./svelte": {
+      "types": "./dist/svelte.d.ts",
+      "import": "./dist/svelte.mjs",
+      "require": "./dist/svelte.js"
+    },
+    "./sveltekit/client": {
+      "types": "./dist/sveltekit/client.d.ts",
+      "import": "./dist/sveltekit/client.mjs",
+      "require": "./dist/sveltekit/client.js"
+    },
+    "./sveltekit/server": {
+      "types": "./dist/sveltekit/server.d.ts",
+      "import": "./dist/sveltekit/server.mjs",
+      "require": "./dist/sveltekit/server.js"
+    },
+    "./express": {
+      "types": "./dist/express.d.ts",
+      "import": "./dist/express.mjs",
+      "require": "./dist/express.js"
+    },
+    "./fastify": {
+      "types": "./dist/fastify.d.ts",
+      "import": "./dist/fastify.mjs",
+      "require": "./dist/fastify.js"
+    },
+    "./nest": {
+      "types": "./dist/nest.d.ts",
+      "import": "./dist/nest.mjs",
+      "require": "./dist/nest.js"
+    },
+    "./database": {
+      "types": "./dist/database.d.ts",
+      "import": "./dist/database.mjs",
+      "require": "./dist/database.js"
+    }
+  },
+  "files": [
+    "/dist"
+  ],
+  "engines": {
+    "node": ">=20.16"
+  },
+  "devDependencies": {
+    "@angular/common": "22.2.1",
+    "@angular/compiler": "22.2.1",
+    "@angular/core": "22.2.1",
+    "@angular/platform-browser": "22.2.1",
+    "@angular/router": "22.2.1",
+    "@nestjs/common": "12.1.2",
+    "@nestjs/core": "12.1.2",
+    "@nestjs/platform-express": "12.1.2",
+    "@nestjs/platform-fastify": "12.1.2",
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/context-async-hooks": "2.11.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.222.0",
+    "@opentelemetry/sdk-trace-node": "2.11.0",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "@types/express": "5.0.6",
+    "@types/node": "^26.6.4",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "drizzle-orm": "0.45.3",
+    "express": "5.2.1",
+    "fastify": "5.12.5",
+    "h3": "1.15.11",
+    "hookable": "5.5.3",
+    "jsdom": "^30.1.1",
+    "mysql2": "3.24.5",
+    "pg": "8.23.1",
+    "prettier": "^3.9.9",
+    "prisma": "7.10.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "svelte": "5.57.1",
+    "tslib": "2.8.1",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11",
+    "vue": "3.5.43",
+    "vue-router": "4.6.4",
+    "zone.js": "0.16.3"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "vitest run --coverage --maxWorkers=2",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "smoke": "node scripts/smoke-package.mjs",
+    "smoke:frameworks": "node scripts/smoke-frameworks.mjs",
+    "smoke:nuxt": "node scripts/smoke-nuxt.mjs",
+    "size": "node scripts/bundle-size.mjs",
+    "audit:prod": "pnpm audit --prod --audit-level=moderate",
+    "prepack": "pnpm build",
+    "smoke:angular": "node scripts/smoke-angular.mjs",
+    "smoke:sveltekit": "node scripts/smoke-sveltekit.mjs",
+    "smoke:node-frameworks": "node scripts/smoke-node-frameworks.mjs"
+  },
+  "dependencies": {
+    "web-vitals": "6.2.2"
+  },
+  "peerDependencies": {
+    "@angular/common": "^21.2.0 || ^22.0.0",
+    "@angular/core": "^21.2.0 || ^22.0.0",
+    "@angular/router": "^21.2.0 || ^22.0.0",
+    "@nestjs/common": "^12.1.2",
+    "@opentelemetry/api": "^1.9.1",
+    "express": "^5.2.1",
+    "fastify": "^5.12.5",
+    "react": "^18.3.1 || ^19.0.0",
+    "rxjs": "^7.8.0",
+    "svelte": "^5.57.1",
+    "vue": "^3.5.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    },
+    "@angular/core": {
+      "optional": true
+    },
+    "@angular/common": {
+      "optional": true
+    },
+    "@angular/router": {
+      "optional": true
+    },
+    "rxjs": {
+      "optional": true
+    },
+    "svelte": {
+      "optional": true
+    },
+    "express": {
+      "optional": true
+    },
+    "fastify": {
+      "optional": true
+    },
+    "@nestjs/common": {
+      "optional": true
+    },
+    "@opentelemetry/api": {
+      "optional": true
+    }
+  }
+}

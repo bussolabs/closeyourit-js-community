@@ -1,0 +1,19 @@
+{
+  "name": "closeyourit-node-database-proof",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "pg": "8.23.1",
+    "mysql2": "3.24.5",
+    "drizzle-orm": "0.45.3",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0"
+  },
+  "devDependencies": {
+    "prisma": "7.10.0"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.0",
+    "mysql2": "3.24.5"
+  }
+}

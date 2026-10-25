@@ -1,0 +1,35 @@
+{
+  "name": "closeyourit-angular-21-proof",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "ng build proof",
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@angular/common": "21.2.25",
+    "@angular/compiler": "21.2.25",
+    "@angular/core": "21.2.25",
+    "@angular/platform-browser": "21.2.25",
+    "@angular/router": "21.2.25",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1",
+    "zone.js": "0.16.3"
+  },
+  "devDependencies": {
+    "@angular/build": "21.2.25",
+    "@angular/cli": "21.2.25",
+    "@angular/compiler-cli": "21.2.25",
+    "typescript": "5.9.3"
+  },
+  "//": [
+    "@modelcontextprotocol/sdk 1.30.0 has a known flaw, fixed from 1.31.0. It comes from @angular/cli",
+    "21.2.25, which requires it exactly for its MCP server: development tool only, it does not end up in",
+    "the example's build nor in the published package. 1.31.0 only changes the minor number and declares",
+    "the same dependencies, so it is forced with an override. @angular/cli 21.2.26 already requires 1.31.0:",
+    "when the example moves to Angular 21.2.26 or later the override must be removed. See CYJS-62."
+  ],
+  "overrides": {
+    "@modelcontextprotocol/sdk": "1.31.0"
+  }
+}

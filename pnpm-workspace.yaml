@@ -1,0 +1,36 @@
+allowBuilds:
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true
+# tsup 8.5.1 keeps esbuild on 0.27.7 (bundle-require pins it): CVE-2026-58217, low.
+# The override moves it to the 0.28 line without waiting for tsup to widen the range.
+#
+# Note for whoever tries TypeScript 7 (CYJS-14): the same trick does NOT work for
+# rollup-plugin-dts, the .d.ts generator. tsup 8.5.1 ships it precompiled
+# inside `tsup/dist/rollup.js` at version 6.1.1, so there is no separate
+# package to override: an override is accepted by the lockfile
+# and ignored by the build. Until tsup updates, TypeScript stays on 5.
+#
+# fast-uri 3.1.5 is exposed to four advisories of the same family: host confusion via IDN
+# canonicalization skipped on scheme-relative references and variants (CVE-2026-75931/75899/
+# 75975/76172, GHSA-5jgf-p345-68v8 and siblings, high, CWE-436). Transitive dependency via ajv,
+# which sits among the development tools (contract tests) and does not end up in the published
+# package. Fixed from 3.1.6; here 3.1.7 is forced, the latest of the line that ajv accepts
+# (`^3.0.1`) — 4.x would fall outside the range. See CYJS-33/34/35/36.
+#
+# deepmerge-ts 7.1.5 is exposed to stack exhaustion on recursive graphs
+# (GHSA-ggr8-5vv4-36mx). It comes from @prisma/config 7.10.0, which pins it exactly, via prisma:
+# development tool only (it generates the client of the database example), it does not end up in
+# the published package. Fixed from 8.0.0; the example does the same (CYJS-45). The range
+# `<8` does not touch future versions: when prisma requires 8 the override will have no
+# effect anymore and must be removed by hand. See CYJS-46.
+#
+# mysql2 3.15.3 has a known flaw in password handling, fixed from 3.22.0.
+# It comes from prisma 7.10.0, which pins it exactly: development tool only, it does not end up
+# in the published package. 3.24.5 is forced, the same one the project already uses
+# directly; the database example does the same (CYJS-47). See CYJS-48.
+overrides:
+  esbuild: ^0.28.2
+  'fast-uri@<3.1.8': '3.1.8'
+  'deepmerge-ts@<8': '8.0.0'
+  'mysql2@<3.22.0': '3.24.5'

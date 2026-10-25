@@ -1,0 +1,14 @@
+{
+  "name": "closeyourit-svelte-proof",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "svelte": "5.57.1",
+    "vite": "8.3.2",
+    "@sveltejs/vite-plugin-svelte": "7.3.1"
+  }
+}

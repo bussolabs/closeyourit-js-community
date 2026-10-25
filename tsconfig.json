@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    // Declared instead of left to the auto-inclusion of node_modules/@types:
+    // while trying TypeScript 7 (CYJS-14) the auto-inclusion no longer kicked in
+    // and `process` — used by the Node integrations — was unknown.
+    // @types/node is the only one installed, so the closed list removes nothing
+    // and makes what enters the type-check deterministic.
+    "types": ["node"],
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "declaration": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": ["src/**/*"]
+}

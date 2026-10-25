@@ -1,0 +1,37 @@
+version: 2
+
+# Separate and reproducible updates (CYJS-14).
+#
+# Rule: minor and patch arrive grouped — they are noise to be absorbed in
+# one go — while EVERY major stays a PR of its own, to be evaluated with its
+# gates (format/lint/build/test/smoke) green. That is why the groups
+# declare `update-types` without `major`: if it were ever added,
+# Vitest, TypeScript and jsdom would go up together and a regression would be
+# impossible to attribute.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # Actions are pinned to SHA: Dependabot updates SHA and version comment
+    # together, so the pin never becomes a forgotten revision.
+    groups:
+      github-actions-minor-patch:
+        patterns: ['*']
+        update-types: [minor, patch]
+    commit-message:
+      prefix: ci(deps)
+    labels: [dependencies, ci]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    versioning-strategy: increase
+    groups:
+      dev-minor-patch:
+        patterns: ['*']
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore(deps)
+    labels: [dependencies]

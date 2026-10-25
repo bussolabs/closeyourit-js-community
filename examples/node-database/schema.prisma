@@ -1,0 +1,15 @@
+generator client {
+  provider = "prisma-client-js"
+  output = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Account {
+  id   String @id @db.VarChar(36)
+  name String @db.VarChar(100)
+
+  @@map("cyi969_accounts")
+}

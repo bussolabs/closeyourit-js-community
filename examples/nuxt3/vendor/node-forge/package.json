@@ -1,0 +1,8 @@
+{
+  "name": "node-forge",
+  "version": "0.0.0-stub",
+  "private": true,
+  "description": "Empty local stand-in for node-forge in the Nuxt 3 example: it loads, but fails on use.",
+  "license": "MIT",
+  "main": "index.js"
+}
