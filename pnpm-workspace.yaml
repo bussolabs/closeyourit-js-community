@@ -29,11 +29,18 @@ allowBuilds:
 # It comes from prisma 7.10.0, which pins it exactly: development tool only, it does not end up
 # in the published package. 3.24.5 is forced, the same one the project already uses
 # directly; the database example does the same (CYJS-47). See CYJS-48.
+#
+# multer 2.4.0 has a known advisory, fixed in 2.5.0. It comes from @nestjs/platform-express
+# 12.1.2, which pins it exactly: development tool only, it does not end up in the published
+# package. The node-frameworks example does the same. The range `<2.5.0` does not touch future
+# versions: when @nestjs/platform-express requires 2.5.0 the override will have no effect
+# anymore and must be removed by hand. See CYJS-71.
 overrides:
   esbuild: ^0.28.2
   'fast-uri@<3.1.8': '3.1.8'
   'deepmerge-ts@<8': '8.0.0'
   'mysql2@<3.22.0': '3.24.5'
+  'multer@<2.5.0': '2.5.0'
   # Transitive copies with known advisories (vite via vitest, fastify via
   # @nestjs/platform-fastify): pinned to the first patched release.
   'vite@>=7.0.0 <7.3.7': '7.3.7'

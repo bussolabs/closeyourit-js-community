@@ -25,6 +25,7 @@
     "@types/node": "24.19.1"
   },
   "overrides": {
-    "fastify": "$fastify"
+    "fastify": "$fastify",
+    "multer": "2.5.0"
   }
 }

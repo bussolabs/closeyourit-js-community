@@ -1,6 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## [0.16.7] - 2026-11-05
+
+### Security
+
+- **Esempio dei server Node su una versione sicura di multer.** Il progetto di prova `examples/node-frameworks` impone multer 2.5.0 al posto della 2.4.0, segnalata dal controllo delle dipendenze. La chiede esatta @nestjs/platform-express 12.1.2, quindi la 2.5.0 è imposta con un override; le dipendenze di multer non cambiano. Lo stesso override (`multer@<2.5.0`) vale per gli strumenti di sviluppo del progetto, dove la copia arriva dallo stesso pacchetto. La nota accanto all'override dice di toglierlo quando @nestjs/platform-express chiederà la 2.5.0. Il pacchetto pubblicato non cambia. (CYJS-71)
 
 ## [0.16.6] - 2026-11-05
 
