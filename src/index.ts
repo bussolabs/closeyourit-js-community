@@ -6,7 +6,7 @@
 // vitals and resource/CSP failures in the browser; process handlers +
 // lifecycle on Node.
 
-import { Client } from './client'
+import { Client, trackingOptedOut } from './client'
 import { installBreadcrumbs } from './integrations/browser/breadcrumbs'
 import { installGlobalHandlers } from './integrations/browser/globalHandlers'
 import { installHttpInstrumentation } from './integrations/browser/http'
@@ -148,7 +148,9 @@ export function init(options: CloseYourItOptions): Client {
       if (client.options.trackPageviews) {
         uninstallPageviews = installPageviews(client)
       }
-      if (client.options.replay) {
+      // A visitor who asked not to be tracked is not recorded at all: no rrweb,
+      // no replay cookie (CYJS-74). The chunk send is gated too, as a backstop.
+      if (client.options.replay && !trackingOptedOut(client.options)) {
         uninstallReplay = installReplay(client)
       }
       // After the lifecycle, like the replay: the measurements go out when the page

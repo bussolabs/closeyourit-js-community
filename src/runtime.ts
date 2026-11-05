@@ -7,6 +7,22 @@ export function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof document !== 'undefined'
 }
 
+/// `true` when the browser asks not to be tracked (CYJS-74): Do Not Track
+/// (`navigator.doNotTrack === '1'`) or Global Privacy Control
+/// (`navigator.globalPrivacyControl === true`). It also accepts the legacy
+/// values of older browsers (`'yes'` in old Firefox, `window.doNotTrack` in old
+/// Safari/IE, `navigator.msDoNotTrack` in IE). Read at every call, never cached:
+/// it follows the browser in real time. `false` outside the browser.
+export function doNotTrackRequested(): boolean {
+  if (!isBrowser()) return false
+  const nav = navigator as Navigator & Record<string, unknown>
+  const signal =
+    nav.doNotTrack ??
+    (window as unknown as Record<string, unknown>)['doNotTrack'] ??
+    nav['msDoNotTrack']
+  return nav['globalPrivacyControl'] === true || signal === '1' || signal === 'yes'
+}
+
 /// `true` in plain Node.js (no DOM).
 export function isNode(): boolean {
   return (

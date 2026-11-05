@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+## [0.16.2] - 2026-11-05
+
+### Security
+
+- **Esempio Angular su una versione sicura di zod.** Il progetto di prova `examples/angular` impone zod 4.6.6 al posto della 4.6.5, che può esaurire la memoria validando raccolte troppo grandi (GHSA-mrhx-c7xc-m3w5). La chiede esatta @angular/cli 22.2.1, usata solo in sviluppo; la 4.6.6 cambia solo l'ultima cifra e non ha dipendenze, quindi nel lockfile cambia solo questa libreria. La nota nel `package.json` dell'esempio spiega perché e dice di togliere l'override passando ad Angular 22.2.3, che chiede già la 4.6.6. Il pacchetto pubblicato non cambia. (CYJS-68)
+
+## [0.16.1] - 2026-11-03
+
+### Fixed
+
+- **La versione 0.16.0 arriva davvero.** La 0.16.0 non era stata pubblicata per un controllo interno fallito. Questa versione contiene le stesse novità.
+
+## [0.16.0] - 2026-11-03
+
+### Changed
+
+- **Rispetta chi chiede di non essere tracciato.** Se il browser chiede di non tracciare, visite, eventi obiettivo e registrazione della sessione non partono più; errori e log sì. Le visite contate possono calare. Per tornare a prima: `respectDoNotTrack: false`. (CYJS-74)
+
+### Security
+
+- **Dipendenze di sviluppo ed esempi aggiornati.** Vite, Vitest, Fastify, Next e gli altri pacchetti segnalati passano alle versioni corrette. Restano solo i casi senza una correzione usabile, annotati negli esempi. Il pacchetto pubblicato non cambia.
+
 ## [0.15.0] - 2026-10-22
 
 ### Changed

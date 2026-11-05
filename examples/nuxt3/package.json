@@ -50,10 +50,16 @@
     "override and the lockfile stays as it is. No stable version of @nuxt/devtools accepts simple-git 4.",
     "To be rechecked as soon as nuxt requires a stable version of @nuxt/devtools that accepts simple-git 4",
     "or no longer uses it: at that point it is updated (at least to 4.0.1) and this note must be removed, as",
-    "in the Nuxt 4 example. See CYJS-55, CYJS-56, CYJS-57, CYJS-58 and CYJS-59."
+    "in the Nuxt 4 example. See CYJS-55, CYJS-56, CYJS-57, CYJS-58 and CYJS-59.",
+    "",
+    "nuxt 3.21.11 keeps the server-route and server-island advisories fixed only in nuxt 4.6.2",
+    "(accepted risk): no 3.x release carries the fix and this example exists to prove Nuxt 3. It only runs on",
+    "loopback in smoke:nuxt and is not published. vite is forced to 7.3.7 and launch-editor to 2.14.2."
   ],
   "overrides": {
     "@simple-git/argv-parser": "2.0.1",
-    "node-forge": "file:./vendor/node-forge"
+    "node-forge": "file:./vendor/node-forge",
+    "launch-editor": "2.14.2",
+    "vite@^7.0.0": "7.3.7"
   }
 }

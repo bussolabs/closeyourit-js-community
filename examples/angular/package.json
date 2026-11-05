@@ -20,5 +20,17 @@
     "@angular/cli": "22.2.1",
     "@angular/compiler-cli": "22.2.1",
     "typescript": "6.0.2"
+  },
+  "//": [
+    "zod 4.6.5 has a known flaw (GHSA-mrhx-c7xc-m3w5), fixed from 4.6.6. It comes from @angular/cli",
+    "22.2.1, which requires it exactly: development tool only, it does not end up in the example's build",
+    "nor in the published package. 4.6.6 only changes the patch number and declares no dependencies, so",
+    "it is forced with an override. @angular/cli 22.2.3 already requires 4.6.6: when the example moves",
+    "to Angular 22.2.3 or later the zod override must be removed. See CYJS-68."
+  ],
+  "overrides": {
+    "vite": "8.3.3",
+    "@modelcontextprotocol/server": "2.3.0",
+    "zod": "4.6.6"
   }
 }

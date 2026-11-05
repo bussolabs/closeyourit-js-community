@@ -47,6 +47,7 @@ export interface ResolvedOptions {
   excludedExceptions: string[]
   captureRequest: boolean
   trackPageviews: boolean
+  respectDoNotTrack: boolean
   replay: boolean
   replayMaskAllInputs: boolean
   replayBlockSelector: string | undefined
@@ -105,6 +106,7 @@ export function resolveOptions(options: CloseYourItOptions): ResolvedOptions {
     excludedExceptions: options.excludedExceptions ?? [],
     captureRequest: options.captureRequest ?? true,
     trackPageviews: options.trackPageviews ?? false,
+    respectDoNotTrack: options.respectDoNotTrack ?? true,
     replay: options.replay ?? false,
     replayMaskAllInputs: options.replayMaskAllInputs ?? true,
     replayBlockSelector: options.replayBlockSelector,

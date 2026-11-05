@@ -34,3 +34,7 @@ overrides:
   'fast-uri@<3.1.8': '3.1.8'
   'deepmerge-ts@<8': '8.0.0'
   'mysql2@<3.22.0': '3.24.5'
+  # Transitive copies with known advisories (vite via vitest, fastify via
+  # @nestjs/platform-fastify): pinned to the first patched release.
+  'vite@>=7.0.0 <7.3.7': '7.3.7'
+  'fastify@<5.12.6': '5.12.6'

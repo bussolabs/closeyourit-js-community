@@ -172,6 +172,12 @@ export interface CloseYourItOptions {
   /// `false`. In the browser with `autoInstall` it emits a pageview on load and on
   /// every `pathname` change (hash and `replaceState` on the same path do not count).
   trackPageviews?: boolean
+  /// Honours the browser's "do not track me" signals (Do Not Track and Global
+  /// Privacy Control). Default `true`: with a signal on, pageviews, custom
+  /// events (`captureEvent`) and session replay are not sent. Errors, logs,
+  /// metrics and Web Vitals keep being sent. Set `false` only if other
+  /// obligations require counting those visitors anyway.
+  respectDoNotTrack?: boolean
   /// Records the session (session replay) with rrweb and sends the chunks to `…/replays`.
   /// Default `false` (opt-in, requires consent: recording navigation is PII).
   /// Requires `window.rrweb` (rrweb UMD build loaded by the page). The replay

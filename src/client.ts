@@ -39,7 +39,11 @@ import {
 import { buildPageview } from './pageviews'
 import { autoRequestContext } from './requestContext'
 import type { ResolvedOptions, TransportAuth } from './options'
-import { isBrowser, serverName as detectServerName } from './runtime'
+import {
+  doNotTrackRequested,
+  isBrowser,
+  serverName as detectServerName,
+} from './runtime'
 import { createScopeStorage } from './asyncContext'
 import type { ScopeStorage } from './asyncContext'
 import { Diagnostics, diagnosticsSuppressed, errorName } from './diagnostics'
@@ -435,15 +439,17 @@ export class Client {
 
   // --------------------------------------------------------------- pageview
 
-  /// Captures a pageview (cookieless web analytics). No-op if disabled or
-  /// outside the browser. NEVER sampled (parity with metrics/logs: analytics
-  /// loses meaning with partial data). [overrides.path] forces the path (default
+  /// Captures a pageview (cookieless web analytics). No-op if disabled,
+  /// outside the browser or when the visitor opted out (`trackingOptedOut`).
+  /// NEVER sampled (parity with metrics/logs: analytics loses meaning with
+  /// partial data). [overrides.path] forces the path (default
   /// `location.pathname`); `environment` is added here from the resolved environment.
   /// It goes through `enqueue`, so it honours `beforeSend` and the counters like the
   /// other sends.
   capturePageview(overrides: { path?: string } = {}): void {
     if (!this.enabled) return
     if (!isBrowser()) return
+    if (trackingOptedOut(this.options)) return
 
     this.enqueue(
       { ...buildPageview(overrides), environment: this.options.environment },
@@ -453,11 +459,13 @@ export class Client {
   }
 
   /// Captures a custom event (goal/conversion). [name] is the event name
-  /// (never "pageview"); no-op if disabled, outside the browser or without a name.
+  /// (never "pageview"); no-op if disabled, outside the browser, without a name
+  /// or when the visitor opted out (`trackingOptedOut`).
   /// Same location/hostname/UTM as the pageview's current context.
   captureEvent(name: string, overrides: { path?: string } = {}): void {
     if (!this.enabled) return
     if (!isBrowser()) return
+    if (trackingOptedOut(this.options)) return
     if (!name) return
 
     this.enqueue(
@@ -516,11 +524,13 @@ export class Client {
   }
 
   /// Sends a replay chunk (already built by `buildReplayChunk`). No-op if
-  /// disabled or outside the browser. Goes through `enqueue` → honours `beforeSend`
+  /// disabled, outside the browser or when the visitor opted out
+  /// (`trackingOptedOut`). Goes through `enqueue` → honours `beforeSend`
   /// and the counters like the other sends. `environment` added here.
   captureReplayChunk(chunk: EventPayload): void {
     if (!this.enabled) return
     if (!isBrowser()) return
+    if (trackingOptedOut(this.options)) return
 
     this.enqueue(
       { ...chunk, environment: this.options.environment },
@@ -900,6 +910,15 @@ export class Client {
       console.debug('[closeyourit]', message, error ?? '')
     }
   }
+}
+
+/// `true` when the visitor asked the browser not to be tracked and the SDK
+/// honours it (`respectDoNotTrack`, default on). It stops only what counts
+/// people (pageviews, custom events, session replay); errors and logs keep
+/// flowing. Read at every send, so it follows the browser in real time (CYJS-74).
+/// A module function, not a getter: the minifier can shorten its name.
+export function trackingOptedOut(options: ResolvedOptions): boolean {
+  return options.respectDoNotTrack && doNotTrackRequested()
 }
 
 // Caps of the events and replay channels anchored to the shared conservative

@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "express": "5.2.1",
-    "fastify": "5.12.5",
+    "fastify": "5.12.6",
     "@nestjs/common": "12.1.2",
     "@nestjs/core": "12.1.2",
     "@nestjs/platform-express": "12.1.2",
@@ -23,5 +23,8 @@
     "typescript": "6.0.3",
     "@types/express": "5.0.6",
     "@types/node": "24.19.1"
+  },
+  "overrides": {
+    "fastify": "$fastify"
   }
 }

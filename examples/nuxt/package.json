@@ -45,9 +45,17 @@
     "override and the lockfile stays as it is. No stable version of @nuxt/devtools accepts simple-git 4",
     "(only 4.0.0-beta no longer uses it, and nuxt 4.6.1 still requires ^3.4.2). To be rechecked as soon as",
     "nuxt requires a stable version of @nuxt/devtools that accepts simple-git 4 or no longer uses it:",
-    "at that point it is updated (at least to 4.0.1) and this note must be removed. See CYJS-55, CYJS-56 and CYJS-57."
+    "at that point it is updated (at least to 4.0.1) and this note must be removed. See CYJS-55, CYJS-56 and CYJS-57.",
+    "",
+    "nuxt 4.5.2 stays below the 4.6.2 fix for its server-route advisories by choice (accepted risk):",
+    "4.6.2 builds a server bundle without vue (.output/server/node_modules/vue is missing), so the",
+    "built app does not start and smoke:nuxt fails. 4.6.2 is the latest 4.x today. The example only runs",
+    "on loopback in smoke:nuxt and is not published. Move to the first 4.x that starts again.",
+    "vite and launch-editor are forced to their first patched releases (8.3.3, 2.14.2)."
   ],
   "overrides": {
-    "@simple-git/argv-parser": "2.0.1"
+    "@simple-git/argv-parser": "2.0.1",
+    "launch-editor": "2.14.2",
+    "vite": "8.3.3"
   }
 }
