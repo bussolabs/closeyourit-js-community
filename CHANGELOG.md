@@ -1,6 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## [0.16.4] - 2026-11-05
+
+### Security
+
+- **Esempio Angular 21 su versioni sicure di undici.** Il progetto di prova `examples/angular21` passa la copia di undici usata da node-gyp dalla 6.29.0 alla 6.29.1 (rientra già nella sua richiesta `^6.25.0`) e quella usata da @angular/build dalla 7.29.1 alla 7.30.1, che chiudono le falle segnalate dal controllo delle dipendenze. @angular/build 21.2.25 chiede la 7.29.1 esatta, quindi la 7.30.1 è imposta con un override limitato a quel pacchetto, così la copia della serie 6 non cambia serie. La nota nel `package.json` dell'esempio dice di togliere l'override quando @angular/build chiederà la 7.30.1 o successiva. Si usano solo in sviluppo: il pacchetto pubblicato non cambia. (CYJS-70)
 
 ## [0.16.3] - 2026-11-05
 

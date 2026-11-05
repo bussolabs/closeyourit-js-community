@@ -27,11 +27,20 @@
     "21.2.25, which requires it exactly for its MCP server: development tool only, it does not end up in",
     "the example's build nor in the published package. 1.31.0 only changes the minor number and declares",
     "the same dependencies, so it is forced with an override. @angular/cli 21.2.26 already requires 1.31.0:",
-    "when the example moves to Angular 21.2.26 or later the override must be removed. See CYJS-62."
+    "when the example moves to Angular 21.2.26 or later the override must be removed. See CYJS-62.",
+    "undici 7.29.1 has known flaws, fixed from 7.30.1. It comes from @angular/build 21.2.25 (and 21.2.26),",
+    "which requires it exactly: development tool only, it does not end up in the example's build nor in the",
+    "published package. 7.30.1 only changes the minor number and has no dependencies, so it is forced with an override",
+    "scoped to @angular/build, leaving node-gyp on undici 6 (already 6.29.1, which its ^6.25.0 range allows).",
+    "When the example moves to an @angular/build that requires undici 7.30.1 or later the override must be",
+    "removed. See CYJS-70."
   ],
   "overrides": {
     "@modelcontextprotocol/sdk": "1.32.0",
     "vite": "7.3.7",
-    "ip-address": "10.7.4"
+    "ip-address": "10.7.4",
+    "@angular/build": {
+      "undici": "7.30.1"
+    }
   }
 }
