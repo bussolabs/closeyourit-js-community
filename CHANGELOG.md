@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+## [0.16.6] - 2026-11-05
+
+### Security
+
+- **Esempio Nuxt su una versione sicura di node-forge.** Il progetto di prova `examples/nuxt` passa la libreria di cifratura che listhen usa per i certificati del server locale di sviluppo dalla 1.4.0 alla 1.4.1, che corregge le falle segnalate dal controllo delle dipendenze, compresa la verifica delle firme che poteva accettare un certificato firmato in modo falso. listhen chiede già `^1.4.0`, quindi nel lockfile cambia solo questa libreria, senza override. Il rischio accettato in CYJS-53 è chiuso e la nota nel `package.json` dell'esempio è stata tolta. Il pacchetto pubblicato non cambia. (CYJS-72)
+
 ## [0.16.4] - 2026-11-05
 
 ### Security
