@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.16.3] - 2026-11-05
+
+### Security
+
+- **Esempio Angular 21 su una versione sicura di body-parser.** Il progetto di prova `examples/angular21` passa da body-parser 2.3.0 alla 2.4.0, che corregge la falla segnalata dal controllo delle dipendenze. Arriva solo dal server web degli strumenti di sviluppo di Angular, che accetta già la nuova versione: nel lockfile cambia solo questa libreria, senza override. Il pacchetto pubblicato non cambia. (CYJS-69)
+
 ## [0.16.2] - 2026-11-05
 
 ### Security
