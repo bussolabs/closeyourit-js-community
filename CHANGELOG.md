@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+## [0.16.8] - 2026-11-07
+
+### Security
+
+- **Strumenti di sviluppo su versioni sicure.** NestJS passa alla 12.4.0, con multer 2.5.0, body-parser 2.4.0 e undici 8.12.4, che chiudono vulnerabilità gravi. Il codice del pacchetto pubblicato non cambia. (CYJS-75)
+
 ## [0.16.7] - 2026-11-05
 
 ### Security

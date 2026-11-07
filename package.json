@@ -1,6 +1,6 @@
 {
   "name": "@bussolabs/closeyourit-js",
-  "version": "0.16.1",
+  "version": "0.16.8",
   "description": "CloseYourIt browser SDK: error monitoring, logs, cookieless website analytics and session replay (self-hosted, Sentry-compatible wire format)",
   "keywords": [
     "closeyourit",
@@ -119,10 +119,10 @@
     "@angular/core": "22.2.1",
     "@angular/platform-browser": "22.2.1",
     "@angular/router": "22.2.1",
-    "@nestjs/common": "12.1.2",
-    "@nestjs/core": "12.1.2",
-    "@nestjs/platform-express": "12.1.2",
-    "@nestjs/platform-fastify": "12.1.2",
+    "@nestjs/common": "12.4.0",
+    "@nestjs/core": "12.4.0",
+    "@nestjs/platform-express": "12.4.0",
+    "@nestjs/platform-fastify": "12.4.0",
     "@opentelemetry/api": "1.9.1",
     "@opentelemetry/context-async-hooks": "2.11.0",
     "@opentelemetry/exporter-trace-otlp-http": "0.222.0",
