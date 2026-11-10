@@ -173,3 +173,101 @@ describe('Nitro Node instrumentation with real H3 dispatch', () => {
     expect(events).toHaveLength(2)
   })
 })
+
+describe('Crawler probes against a real H3 router', () => {
+  it('ignores missing pages and client-error islands while reporting real failures', async () => {
+    const { events, integration } = setup()
+    const hooks = createHooks()
+    cleanup.push(integration.install(hooks))
+    const observed: unknown[] = []
+    cleanup.push(
+      hooks.hook('error', (error: unknown) => {
+        observed.push(error)
+      }),
+    )
+    const app = createApp({
+      onRequest: (event) => hooks.callHook('request', event),
+      onError: async (error, event) => {
+        await hooks.callHook('error', error, { event })
+        const status = error as { statusCode?: number; status?: number }
+        event.node.res.statusCode = status.statusCode ?? status.status ?? 500
+        event.node.res.end('Handled')
+      },
+    })
+    const router = createRouter()
+    router.get(
+      '/boom',
+      eventHandler(() => {
+        throw new Error('Real failure')
+      }),
+    )
+    router.get(
+      '/island',
+      eventHandler(() => {
+        throw Object.assign(new Error('Invalid island component name'), {
+          name: 'HTTPError',
+          status: 400,
+        })
+      }),
+    )
+    router.get(
+      '/upstream',
+      eventHandler(() => {
+        throw Object.assign(new Error('Upstream unavailable'), {
+          name: 'HTTPError',
+          status: 503,
+        })
+      }),
+    )
+    app.use(router)
+    const server = createServer(toNodeListener(app))
+    server.listen(0, '127.0.0.1')
+    await once(server, 'listening')
+    cleanup.push(() => new Promise<void>((resolve) => server.close(() => resolve())))
+    const { port } = server.address() as { port: number }
+    const probes = ['/.env', '/swagger.json', '/robots.txt']
+    const statuses = await Promise.all(
+      [...probes, '/boom', '/island', '/upstream'].map((path) =>
+        fetch(`http://127.0.0.1:${port}${path}`).then((response) => response.status),
+      ),
+    )
+    expect(statuses).toEqual([404, 404, 404, 500, 400, 503])
+    // Every request reached the error hook: the absence of events is the filter.
+    expect(observed).toHaveLength(6)
+    expect(
+      events
+        .filter((event) => 'exception' in event)
+        .map(
+          (event) =>
+            (event.exception as { values: Array<{ value: string }> }).values.at(-1)!
+              .value,
+        )
+        .sort(),
+    ).toEqual(['Real failure', 'Upstream unavailable'])
+  })
+})
+
+describe('Status field variants reported straight to the error hook', () => {
+  it('ignores H3 2 HTTPError client errors, which expose status instead of statusCode', async () => {
+    const { events, integration } = setup()
+    const missing = Object.assign(new Error('Page not found: /.env'), {
+      name: 'HTTPError',
+      status: 404,
+      statusText: 'Not Found',
+    })
+    await integration.onError(missing)
+    const unavailable = Object.assign(new Error('Service unavailable'), {
+      name: 'HTTPError',
+      status: 503,
+    })
+    await integration.onError(unavailable)
+    await integration.onError(new Error('No status at all'))
+    expect(
+      events.map(
+        (event) =>
+          (event.exception as { values: Array<{ value: string }> }).values.at(-1)!
+            .value,
+      ),
+    ).toEqual(['Service unavailable', 'No status at all'])
+  })
+})

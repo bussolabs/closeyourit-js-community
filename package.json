@@ -1,6 +1,6 @@
 {
   "name": "@bussolabs/closeyourit-js",
-  "version": "0.16.8",
+  "version": "0.16.9",
   "description": "CloseYourIt browser SDK: error monitoring, logs, cookieless website analytics and session replay (self-hosted, Sentry-compatible wire format)",
   "keywords": [
     "closeyourit",

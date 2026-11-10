@@ -63,7 +63,8 @@ The adapter observes official `vue:error` and `app:error` hooks without changing
 Nuxt's fallback or error handler. Use the same Client for any additional global
 capture: the SDK deduplicates the same Error object, plus its existing five-second
 fingerprint window. Nuxt/H3 errors with integer status codes 300–499 are expected
-responses and excluded. Other failures are marked unhandled; `contexts.nuxt`
+responses and excluded; the status is read from `statusCode` (H3 1) or from `status`
+(H3 2 `HTTPError`, which no longer carries `statusCode`). Other failures are marked unhandled; `contexts.nuxt`
 identifies client/Nitro origin.
 
 Successful router navigations append bounded **breadcrumbs**, not page-view events.
@@ -101,6 +102,12 @@ export const monitoring = createNitroInstrumentation(client)
 import { monitoring } from '../utils/monitoring'
 export default defineNitroPlugin((app) => monitoring.install(app.hooks))
 ```
+
+Prefer `install` over a hand-written `app.hooks.hook('error', …)` that captures
+every error it receives. Crawler probes for files that do not exist reach that hook
+as 404 responses the framework already handled, and become tens of thousands of
+false errors. `install` applies the expected-response rule once, in the package,
+instead of one copy per site; real failures are still reported (CYJS-89).
 
 Initialize lazily at server runtime, never with credentials in build configuration.
 The fixture declares `nitro.externals.external: ['@bussolabs/closeyourit-js']` so

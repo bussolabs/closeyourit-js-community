@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.16.9] - 2026-11-10
+
+### Fixed
+
+- **Le pagine non trovate non finiscono più fra gli errori.** Il plugin Nuxt/Nitro del pacchetto scarta le risposte attese (stato da 300 a 499) anche quando Nuxt le espone nel campo `status` invece di `statusCode`. Gli errori veri del sito continuano ad arrivare. (CYJS-89)
+
 ## [0.16.8] - 2026-11-07
 
 ### Security
