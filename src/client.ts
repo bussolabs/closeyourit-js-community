@@ -169,6 +169,7 @@ export class Client {
         (batch) => this.flushLogs(batch),
         this.options.logsBatchSize,
         this.options.logsFlushIntervalMs,
+        (error) => this.absorb('log flush', error),
       )
 
     // The usages channel is bearer ONLY: with the DSN public key (browser) the
@@ -238,61 +239,64 @@ export class Client {
   /// already captured, duplicated within the window, or not sampled.
   captureException(error: unknown, hint: CaptureHint = {}): void {
     if (!this.enabled || diagnosticsSuppressed()) return
+    this.guarded('captureException', () => {
+      const normalized = normalizeError(error)
+      if (this.options.excludedExceptions.includes(normalized.type)) return
+      if (this.dedup.wasCaptured(error)) return
 
-    const normalized = normalizeError(error)
-    if (this.options.excludedExceptions.includes(normalized.type)) return
-    if (this.dedup.wasCaptured(error)) return
+      const key = dedupKey(
+        normalized.type,
+        normalized.value,
+        topFrameKey(normalized.stack),
+      )
+      if (this.dedup.isDuplicate(key)) return
+      // Marked BEFORE sampling (gem parity): an error dropped by sampling is not
+      // re-sent by an outer handler.
+      this.dedup.markCaptured(error)
+      if (!this.sampled(this.options.sampleRate)) {
+        this.noteDrop('sample_rate')
+        return
+      }
 
-    const key = dedupKey(
-      normalized.type,
-      normalized.value,
-      topFrameKey(normalized.stack),
-    )
-    if (this.dedup.isDuplicate(key)) return
-    // Marked BEFORE sampling (gem parity): an error dropped by sampling is not
-    // re-sent by an outer handler.
-    this.dedup.markCaptured(error)
-    if (!this.sampled(this.options.sampleRate)) {
-      this.noteDrop('sample_rate')
-      return
-    }
-
-    const payload = buildErrorEvent({
-      error: normalized,
-      environment: this.options.environment,
-      release: this.options.release,
-      handled: hint.handled ?? false,
-      level: hint.level ?? 'error',
-      scopeHash: this.scopeHash(),
-      traceId: this.scope.traceId,
-      replayId: this.scope.replaySessionId,
-      contexts: hint.contexts,
-      request: this.autoRequest(),
-      serverName: this.serverName,
+      const payload = buildErrorEvent({
+        error: normalized,
+        environment: this.options.environment,
+        release: this.options.release,
+        handled: hint.handled ?? false,
+        level: hint.level ?? 'error',
+        scopeHash: this.scopeHash(),
+        traceId: this.scope.traceId,
+        replayId: this.scope.replaySessionId,
+        contexts: hint.contexts,
+        request: this.autoRequest(),
+        serverName: this.serverName,
+      })
+      this.enqueue(payload, this.eventsIngestUri, capEventToBudget)
     })
-    this.enqueue(payload, this.eventsIngestUri, capEventToBudget)
   }
 
   /// Captures a diagnostic message.
   captureMessage(message: string, level: EventLevel = 'info'): void {
     if (!this.enabled || diagnosticsSuppressed()) return
-    if (!this.sampled(this.options.sampleRate)) {
-      this.noteDrop('sample_rate')
-      return
-    }
+    this.guarded('captureMessage', () => {
+      if (!this.sampled(this.options.sampleRate)) {
+        this.noteDrop('sample_rate')
+        return
+      }
 
-    const payload = buildMessageEvent({
-      message,
-      environment: this.options.environment,
-      release: this.options.release,
-      level,
-      scopeHash: this.scopeHash(),
-      traceId: this.scope.traceId,
-      replayId: this.scope.replaySessionId,
-      request: this.autoRequest(),
-      serverName: this.serverName,
+      const payload = buildMessageEvent({
+        message,
+        environment: this.options.environment,
+        release: this.options.release,
+        level,
+        scopeHash: this.scopeHash(),
+        traceId: this.scope.traceId,
+        replayId: this.scope.replaySessionId,
+        request: this.autoRequest(),
+        serverName: this.serverName,
+      })
+      this.enqueue(payload, this.eventsIngestUri, capEventToBudget)
     })
-    this.enqueue(payload, this.eventsIngestUri, capEventToBudget)
   }
 
   // ------------------------------------------------------------------- logs
@@ -306,25 +310,27 @@ export class Client {
     logger?: string,
   ): void {
     if (!this.enabled || !this.options.logsEnabled || diagnosticsSuppressed()) return
-    const normalized = normalizeLogLevel(level)
-    if (!meetsMinLevel(normalized, this.options.logsMinLevel)) return
-    if (!this.sampled(this.options.logsSampleRate)) {
-      this.noteDrop('sample_rate')
-      return
-    }
-    if (message.trim().length === 0) return
+    this.guarded('log', () => {
+      const normalized = normalizeLogLevel(level)
+      if (!meetsMinLevel(normalized, this.options.logsMinLevel)) return
+      if (!this.sampled(this.options.logsSampleRate)) {
+        this.noteDrop('sample_rate')
+        return
+      }
+      if (message.trim().length === 0) return
 
-    this.logBuffer.add(
-      buildLogEvent({
-        message,
-        level: normalized,
-        environment: this.options.environment,
-        release: this.options.release,
-        logger,
-        traceId: this.scope.traceId,
-        attributes,
-      }),
-    )
+      this.logBuffer.add(
+        buildLogEvent({
+          message,
+          level: normalized,
+          environment: this.options.environment,
+          release: this.options.release,
+          logger,
+          traceId: this.scope.traceId,
+          attributes,
+        }),
+      )
+    })
   }
 
   // ---------------------------------------------------------------- metrics
@@ -332,7 +338,9 @@ export class Client {
   /** Internal adapter bridge: shared redaction, delivery limits and diagnostics. */
   captureMetric(payload: EventPayload): void {
     if (!this.enabled) return
-    this.enqueue(payload, metricsUri(this.options), capGenericToBudget)
+    this.guarded('captureMetric', () => {
+      this.enqueue(payload, metricsUri(this.options), capGenericToBudget)
+    })
   }
 
   /// Measures [body] and sends a `slow_method` metric if the duration exceeds
@@ -451,11 +459,13 @@ export class Client {
     if (!isBrowser()) return
     if (trackingOptedOut(this.options)) return
 
-    this.enqueue(
-      { ...buildPageview(overrides), environment: this.options.environment },
-      pageviewsUri(this.options),
-      capGenericToBudget,
-    )
+    this.guarded('capturePageview', () => {
+      this.enqueue(
+        { ...buildPageview(overrides), environment: this.options.environment },
+        pageviewsUri(this.options),
+        capGenericToBudget,
+      )
+    })
   }
 
   /// Captures a custom event (goal/conversion). [name] is the event name
@@ -468,11 +478,13 @@ export class Client {
     if (trackingOptedOut(this.options)) return
     if (!name) return
 
-    this.enqueue(
-      { ...buildPageview(overrides), name, environment: this.options.environment },
-      pageviewsUri(this.options),
-      capGenericToBudget,
-    )
+    this.guarded('captureEvent', () => {
+      this.enqueue(
+        { ...buildPageview(overrides), name, environment: this.options.environment },
+        pageviewsUri(this.options),
+        capGenericToBudget,
+      )
+    })
   }
 
   // ------------------------------------------------------------ web vitals
@@ -494,24 +506,26 @@ export class Client {
     if (!isBrowser()) return
     if (measures.length === 0) return
     if (diagnosticsSuppressed()) return
-    if (!this.sampledForWebVitals()) {
-      this.noteDrop('sample_rate')
-      return
-    }
+    this.guarded('captureWebVitals', () => {
+      if (!this.sampledForWebVitals()) {
+        this.noteDrop('sample_rate')
+        return
+      }
 
-    const stamped = measures.map((measure) => ({
-      ...measure,
-      environment: this.options.environment,
-      ...(this.options.release ? { release: this.options.release } : {}),
-    }))
-    const kept = this.applyBeforeSend(stamped).map(capGenericToBudget)
-    if (kept.length === 0) return
+      const stamped = measures.map((measure) => ({
+        ...measure,
+        environment: this.options.environment,
+        ...(this.options.release ? { release: this.options.release } : {}),
+      }))
+      const kept = this.capEach(this.applyBeforeSend(stamped), capGenericToBudget)
+      if (kept.length === 0) return
 
-    const url = webVitalsUri(this.options)
-    if (this.transport.send(kept, url)) {
-      this.stats.increment('enqueued')
-      this.diagnostics.notify('enqueue', { path: pathOf(url), batch: kept.length })
-    }
+      const url = webVitalsUri(this.options)
+      if (this.transport.send(kept, url)) {
+        this.stats.increment('enqueued')
+        this.diagnostics.notify('enqueue', { path: pathOf(url), batch: kept.length })
+      }
+    })
   }
 
   // ----------------------------------------------------------------- replay
@@ -532,11 +546,13 @@ export class Client {
     if (!isBrowser()) return
     if (trackingOptedOut(this.options)) return
 
-    this.enqueue(
-      { ...chunk, environment: this.options.environment },
-      replayUri(this.options),
-      capReplayChunkToBudget,
-    )
+    this.guarded('captureReplayChunk', () => {
+      this.enqueue(
+        { ...chunk, environment: this.options.environment },
+        replayUri(this.options),
+        capReplayChunkToBudget,
+      )
+    })
   }
 
   // -------------------------------------------------------- usage telemetry
@@ -555,7 +571,9 @@ export class Client {
     // A symbol recorded FROM the diagnostic callback must not produce
     // telemetry: diagnostics are zero-sum (CYJS-9).
     if (diagnosticsSuppressed()) return
-    this.usage?.record(kind, symbol)
+    this.guarded('recordUsage', () => {
+      this.usage?.record(kind, symbol)
+    })
   }
 
   /// Declares that a piece of application code was EXECUTED. [key] must be a
@@ -740,6 +758,44 @@ export class Client {
     this.diagnostics.notify('drop', { reason, ...details })
   }
 
+  // Runs the body of a public entry point: an unexpected failure is absorbed,
+  // counted as a drop with reason `error` and logged in debug mode, instead of
+  // reaching the host (CYJS-76). The drops the body already counts (sampling,
+  // `beforeSend`, unserializable payload) return normally and are not counted
+  // again here.
+  private guarded(what: string, body: () => void): void {
+    try {
+      body()
+    } catch (error) {
+      this.absorb(what, error)
+    }
+  }
+
+  private absorb(what: string, error: unknown): void {
+    this.noteDrop('error', { error: errorName(error) })
+    this.debugLog(`${what} failed, absorbed`, error)
+  }
+
+  // Applies [cap] to every element of a batch: the byte budget is the first
+  // serialization of the payload, so an element that cannot be serialized
+  // (cycle, throwing `toJSON`) fails here and is dropped alone, counted as
+  // `error`, while the others go on (CYJS-76).
+  private capEach(
+    batch: EventPayload[],
+    cap: (payload: EventPayload) => EventPayload,
+  ): EventPayload[] {
+    const kept: EventPayload[] = []
+    for (const payload of batch) {
+      try {
+        kept.push(cap(payload))
+      } catch (error) {
+        this.noteDrop('error', { error: errorName(error) })
+        this.debugLog('payload cannot be serialized, dropped', error)
+      }
+    }
+    return kept
+  }
+
   // [cap] applies the channel's byte budget (CYJS-10) AFTER `beforeSend`: the hook
   // can inflate the payload, so the cap is the last thing before the wire, so
   // what leaves always honours the service limit.
@@ -771,7 +827,14 @@ export class Client {
       }
       body = result
     }
-    if (cap) body = cap(body)
+    if (cap) {
+      // The cap measures the payload as JSON, so it is also the serialization
+      // check: what `beforeSend` added (or the scope carried) that cannot go on
+      // the wire drops this event alone, counted once as `error` (CYJS-76).
+      const [capped] = this.capEach([body], cap)
+      if (!capped) return
+      body = capped
+    }
     if (this.transport.send(body, url)) {
       this.stats.increment('enqueued')
       this.diagnostics.notify('enqueue', { path: pathOf(url) })
@@ -807,18 +870,26 @@ export class Client {
 
   private flushLogs(batch: EventPayload[]): void {
     if (batch.length === 0) return
-    const payloads = this.applyBeforeSend(batch)
-    if (payloads.length === 0) return
-    // The backend rejects batches beyond LOGS_MAX_BATCH (413) and oversized
-    // payloads: chunkLogBatch splits both by count and by bytes, truncating the
-    // single giant logs, without ever losing an entry (CYJS-10).
-    const url = logsUri(this.options)
-    for (const chunk of chunkLogBatch(payloads, MAX_PAYLOAD_BYTES, LOGS_MAX_BATCH)) {
-      if (this.transport.send(chunk, url)) {
-        this.stats.increment('enqueued')
-        this.diagnostics.notify('enqueue', { path: pathOf(url), batch: chunk.length })
+    this.guarded('log flush', () => {
+      const payloads = this.applyBeforeSend(batch)
+      if (payloads.length === 0) return
+      // The backend rejects batches beyond LOGS_MAX_BATCH (413) and oversized
+      // payloads: chunkLogBatch splits both by count and by bytes, truncating the
+      // single giant logs, without ever losing an entry (CYJS-10). A log that
+      // cannot be serialized is left out alone and counted (CYJS-76).
+      const url = logsUri(this.options)
+      const dropLog = (error: unknown): void => {
+        this.noteDrop('error', { error: errorName(error) })
+        this.debugLog('log cannot be serialized, dropped', error)
       }
-    }
+      const chunks = chunkLogBatch(payloads, MAX_PAYLOAD_BYTES, LOGS_MAX_BATCH, dropLog)
+      for (const chunk of chunks) {
+        if (this.transport.send(chunk, url)) {
+          this.stats.increment('enqueued')
+          this.diagnostics.notify('enqueue', { path: pathOf(url), batch: chunk.length })
+        }
+      }
+    })
   }
 
   // Sending of a usage window (CYJS-31): ONE request per window, or more if the
@@ -860,18 +931,22 @@ export class Client {
     if (!this.enabled) return
     if (durationMs < this.options.slowMethodThresholdMs) return
 
-    this.enqueue(
-      buildSlowMethodEvent({
-        label,
-        durationMs,
-        environment: this.options.environment,
-        release: this.options.release,
-        traceId: this.scope.traceId,
-        args: this.options.captureMethodArguments ? args : undefined,
-      }),
-      metricsUri(this.options),
-      capGenericToBudget,
-    )
+    // Runs inside `measure`, around the application's own code: a failure here
+    // must not replace the body's result or exception.
+    this.guarded('measure', () => {
+      this.enqueue(
+        buildSlowMethodEvent({
+          label,
+          durationMs,
+          environment: this.options.environment,
+          release: this.options.release,
+          traceId: this.scope.traceId,
+          args: this.options.captureMethodArguments ? args : undefined,
+        }),
+        metricsUri(this.options),
+        capGenericToBudget,
+      )
+    })
   }
 
   private perfEnabled(): boolean {

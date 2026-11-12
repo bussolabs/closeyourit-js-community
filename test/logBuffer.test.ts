@@ -44,6 +44,39 @@ describe('LogBuffer', () => {
     buffer.add(event(2))
     expect(buffer.length).toBe(0)
   })
+
+  it('the timed flush never throws and hands the failure to onError (CYJS-76)', () => {
+    const failures: Array<{ error: unknown; batch: EventPayload[] }> = []
+    const buffer = new LogBuffer(
+      () => {
+        throw new TypeError('Do not know how to serialize a BigInt')
+      },
+      100,
+      5000,
+      (error, batch) => failures.push({ error, batch }),
+    )
+    buffer.add(event(1))
+    expect(() => vi.advanceTimersByTime(5000)).not.toThrow()
+    expect(failures).toHaveLength(1)
+    expect(failures[0]!.error).toBeInstanceOf(TypeError)
+    expect(failures[0]!.batch).toEqual([event(1)])
+    expect(buffer.length).toBe(0)
+  })
+
+  it('a throwing onError does not bring the failure back', () => {
+    const buffer = new LogBuffer(
+      () => {
+        throw new Error('flush failed')
+      },
+      1,
+      5000,
+      () => {
+        throw new Error('handler failed')
+      },
+    )
+    expect(() => buffer.add(event(1))).not.toThrow()
+    expect(() => buffer.dispose()).not.toThrow()
+  })
 })
 
 describe('chunkBatches', () => {

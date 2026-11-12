@@ -43,6 +43,7 @@ import { isBrowser, isNode } from './runtime'
 import type { Stats } from './stats'
 import type { DiagnosticDetails, DiagnosticEvent } from './types'
 import { SDK_NAME, SDK_VERSION } from './version'
+import { toWireJson } from './wireJson'
 
 type NotifyDiagnostic = (event: DiagnosticEvent, details?: DiagnosticDetails) => void
 
@@ -122,9 +123,12 @@ export class Transport {
 
   /// Sends [payload] (object or array) to [url]. Returns `true` if the send was
   /// accepted (beacon taken in charge or request queued), `false` if dropped
-  /// (queue full or no transport available).
+  /// (queue full, no transport available or unserializable payload). It never
+  /// throws: a payload that cannot become JSON (cycle, throwing `toJSON`) is
+  /// dropped alone and counted with reason `error` (CYJS-76).
   send(payload: unknown, url: string): boolean {
-    const body = JSON.stringify(payload)
+    const body = this.serialize(payload)
+    if (body === undefined) return false
 
     // Page leaving: the beacon is synchronous, does not consume the in-flight
     // queue and survives the tab closing. If it is missing or rejects the payload
@@ -190,6 +194,22 @@ export class Transport {
   /// accounting, deferred to the end of the turn.
   async flush(): Promise<void> {
     await Promise.allSettled([...this.pending])
+  }
+
+  // Wire body of [payload], or `undefined` when it cannot be serialized: the
+  // drop is counted here, so the caller only has to give up on the send.
+  private serialize(payload: unknown): string | undefined {
+    let failure: unknown = undefined
+    try {
+      const body = toWireJson(payload)
+      if (body !== undefined) return body
+    } catch (error) {
+      failure = error
+    }
+    this.stats.record('error')
+    this.diagnostic('drop', { reason: 'error', error: errorName(failure) })
+    this.debug?.('payload cannot be serialized, dropped', failure)
+    return undefined
   }
 
   // The beacon applies only in the browser and only with the auth in the query

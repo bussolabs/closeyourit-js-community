@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { Client } from '../src/client'
-import type { Transport } from '../src/transport'
+import { Stats } from '../src/stats'
+import { Transport } from '../src/transport'
 import type { CloseYourItOptions, EventPayload } from '../src/types'
+import { toWireJson } from '../src/wireJson'
 
 // In the browser (jsdom) the credential is the DSN public key: events go to the
 // /store drop-in and the secret bearer is never used (CYJS-1).
@@ -566,5 +568,153 @@ describe('Client — diagnostics (CYJS-9)', () => {
     client.captureException(dup)
     // Only intentional filters: no drop counted (reason not listed).
     expect(client.stats.get('dropped')).toBe(0)
+  })
+})
+
+describe('Client — unserializable data (CYJS-76)', () => {
+  const BIG_ID = 9007199254740993n
+  const cyclic = (): Record<string, unknown> => {
+    const value: Record<string, unknown> = { name: 'loop' }
+    value['self'] = value
+    return value
+  }
+
+  it('sends an error whose context carries a bigint, as a full-digit string', () => {
+    const { client, transport } = makeClient()
+    client.setContext('db', { row_id: BIG_ID })
+    expect(() => client.captureException(new Error('boom'))).not.toThrow()
+    expect(transport.send).toHaveBeenCalledTimes(1)
+    expect(toWireJson(transport.calls[0]!.payload)).toContain(
+      '"row_id":"9007199254740993"',
+    )
+    expect(client.stats.toObject().reasons.error).toBe(0)
+  })
+
+  it('sends a message whose extra carries a bigint', () => {
+    const { client, transport } = makeClient()
+    client.setExtra('account_id', BIG_ID)
+    expect(() => client.captureMessage('hello')).not.toThrow()
+    expect(toWireJson(transport.calls[0]!.payload)).toContain('"9007199254740993"')
+  })
+
+  it('sends a log whose attributes carry a bigint', async () => {
+    const { client, transport } = makeClient()
+    client.log('info', 'row loaded', { row_id: BIG_ID })
+    await client.flush()
+    expect(toWireJson(transport.calls[0]!.payload)).toContain(
+      '"row_id":"9007199254740993"',
+    )
+  })
+
+  it('ships a timed log carrying a bigint through the real transport', async () => {
+    vi.useFakeTimers()
+    try {
+      const stats = new Stats()
+      const fetchImpl = vi.fn(() => Promise.resolve({ status: 202 } as Response))
+      const transport = new Transport({
+        auth: { kind: 'dsn', publicKey: PUBLIC_KEY },
+        stats,
+        fetchImpl,
+        timeoutMs: 0,
+      })
+      const client = new Client(
+        { ...base, logsFlushIntervalMs: 1000 },
+        { transport, stats, random: () => 0 },
+      )
+      client.log('info', 'row loaded', { row_id: BIG_ID })
+      expect(() => vi.advanceTimersByTime(1000)).not.toThrow()
+      await transport.flush()
+      expect(fetchImpl).toHaveBeenCalledTimes(1)
+      const init = (fetchImpl.mock.calls[0] as unknown[])[1] as RequestInit
+      expect(init.body).toContain('"row_id":"9007199254740993"')
+      expect(stats.get('sent')).toBe(1)
+      await client.close()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('drops only the cyclic log of a batch and counts it as error', async () => {
+    const { client, transport } = makeClient({
+      beforeSend: (payload) =>
+        payload['message'] === 'broken' ? { ...payload, loop: cyclic() } : payload,
+    })
+    client.log('info', 'first')
+    client.log('info', 'broken')
+    client.log('info', 'third')
+    await client.flush()
+    expect(transport.send).toHaveBeenCalledTimes(1)
+    const batch = transport.calls[0]!.payload as EventPayload[]
+    expect(batch.map((log) => log['message'])).toEqual(['first', 'third'])
+    expect(client.stats.toObject().reasons.error).toBe(1)
+    expect(client.stats.get('dropped')).toBe(1)
+  })
+
+  it('drops an event made unserializable by beforeSend, counted once as error', () => {
+    const events: Array<{ event: string; details: unknown }> = []
+    const { client, transport } = makeClient({
+      beforeSend: (payload) => ({ ...payload, loop: cyclic() }),
+      onDiagnostic: (event, details) => events.push({ event, details }),
+    })
+    expect(() => client.captureException(new Error('x'))).not.toThrow()
+    expect(transport.send).not.toHaveBeenCalled()
+    const stats = client.stats.toObject()
+    expect(stats.reasons.error).toBe(1)
+    expect(stats.reasons.before_send).toBe(0)
+    expect(stats.dropped).toBe(1)
+    expect(events.filter((entry) => entry.event === 'drop')).toEqual([
+      { event: 'drop', details: { reason: 'error', error: 'TypeError' } },
+    ])
+  })
+
+  it('keeps a beforeSend rejection counted only as before_send', () => {
+    const { client, transport } = makeClient({ beforeSend: () => null })
+    client.captureException(new Error('x'))
+    expect(transport.send).not.toHaveBeenCalled()
+    const stats = client.stats.toObject()
+    expect(stats.reasons.before_send).toBe(1)
+    expect(stats.reasons.error).toBe(0)
+    expect(stats.dropped).toBe(1)
+  })
+
+  it('absorbs a failing send in every public entry point', async () => {
+    const { client, transport } = makeClient({ logsBatchSize: 1 })
+    transport.send.mockImplementation(() => {
+      throw new RangeError('transport broke')
+    })
+    expect(() => client.captureException(new Error('x'))).not.toThrow()
+    expect(() => client.captureMessage('m')).not.toThrow()
+    expect(() => client.log('info', 'l')).not.toThrow()
+    expect(() => client.captureMetric({ kind: 'metric' })).not.toThrow()
+    await expect(client.flush()).resolves.toBeUndefined()
+    expect(client.stats.toObject().reasons.error).toBe(4)
+  })
+
+  it('keeps the timed log flush from throwing when the send fails', () => {
+    vi.useFakeTimers()
+    try {
+      const { client, transport } = makeClient({ logsFlushIntervalMs: 1000 })
+      transport.send.mockImplementation(() => {
+        throw new RangeError('transport broke')
+      })
+      client.log('info', 'tick')
+      expect(() => vi.advanceTimersByTime(1000)).not.toThrow()
+      expect(client.stats.toObject().reasons.error).toBe(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('returns the measured result even when the slow-method metric cannot be sent', () => {
+    const { client, transport } = makeClient(
+      { slowMethodThresholdMs: 10 },
+      () => 0,
+      steppingClock(50),
+    )
+    transport.send.mockImplementation(() => {
+      throw new RangeError('transport broke')
+    })
+    expect(client.measure('job', () => 42)).toBe(42)
+    expect(client.stats.toObject().reasons.error).toBe(1)
   })
 })

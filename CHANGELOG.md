@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.16.10] - 2026-11-11
+
+### Fixed
+
+- **Un numero molto grande nei dati non fa più spegnere il server.** Un `bigint` (per esempio un identificativo a 64 bit letto dal database) nel contesto, negli extra o negli attributi di un log ora viaggia scritto come testo, con tutte le cifre. Invio, calcolo delle dimensioni e copia interna usano lo stesso convertitore. Un dato che resta impossibile da spedire, come un oggetto che contiene sé stesso aggiunto da `beforeSend`, viene scartato da solo e contato con motivo `error`, mentre gli altri log del gruppo partono. Le funzioni pubbliche e l'invio a tempo dei log non passano più errori all'applicazione: il guasto è contato come scarto e, con `debug: true`, scritto nel registro. Il tetto del bundle è stato alzato di circa 1,5 KB (0,3 KB compressi) per queste protezioni. (CYJS-76)
+
 ## [0.16.9] - 2026-11-10
 
 ### Fixed

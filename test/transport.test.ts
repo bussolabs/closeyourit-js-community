@@ -327,4 +327,41 @@ describe('Transport', () => {
     await flushed
     expect(stats.get('sent')).toBe(1)
   })
+
+  it('writes a bigint as a string that keeps every digit (CYJS-76)', async () => {
+    const fetchImpl = vi.fn(ok(202))
+    const transport = new Transport({
+      auth: { kind: 'bearer', secret: 't' },
+      stats: new Stats(),
+      fetchImpl,
+      timeoutMs: 0,
+    })
+    expect(transport.send({ id: 18446744073709551615n }, URL)).toBe(true)
+    await transport.flush()
+    const init = fetchImpl.mock.calls[0]![1] as RequestInit
+    expect(init.body).toBe('{"id":"18446744073709551615"}')
+  })
+
+  it('drops an unserializable payload without throwing and counts it as error (CYJS-76)', () => {
+    const stats = new Stats()
+    const fetchImpl = vi.fn(ok(202))
+    const diagnostic = vi.fn()
+    const transport = new Transport({
+      auth: { kind: 'bearer', secret: 't' },
+      stats,
+      fetchImpl,
+      timeoutMs: 0,
+      diagnostic,
+    })
+    const loop: Record<string, unknown> = {}
+    loop['self'] = loop
+    expect(() => transport.send(loop, URL)).not.toThrow()
+    expect(transport.send(loop, URL)).toBe(false)
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(stats.toObject().reasons.error).toBe(2)
+    expect(diagnostic).toHaveBeenCalledWith('drop', {
+      reason: 'error',
+      error: 'TypeError',
+    })
+  })
 })

@@ -103,6 +103,17 @@ describe('installProcessHandlers — uncaughtException', () => {
     expect(proc.exitCode).toBe(1)
     vi.useRealTimers()
   })
+
+  it('a failing flush neither rejects the handler nor skips the exit (CYJS-76)', async () => {
+    const proc = new FakeProc()
+    const client = fakeClient(() => Promise.reject(new TypeError('flush broke')))
+    installProcessHandlers(client as unknown as Client, proc)
+
+    const handled = proc.emit('uncaughtException', new Error('x'))
+    await expect(handled).resolves.toBeUndefined()
+
+    expect(proc.exitCode).toBe(1)
+  })
 })
 
 describe('installProcessHandlers — unhandledRejection', () => {

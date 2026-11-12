@@ -8,6 +8,7 @@ import { isSensitiveKey, FILTERED, scrubMessage } from './scrubber'
 import type { EventPayload } from './types'
 import { uuidV4 } from './uuid'
 import { SDK_NAME, SDK_VERSION } from './version'
+import { toWireJson } from './wireJson'
 
 const SDK_INFO = { name: SDK_NAME, version: SDK_VERSION } as const
 const MAX_ARG_VALUE = 120
@@ -104,8 +105,9 @@ function formatArgs(
 
 function stringify(value: unknown): string {
   if (typeof value === 'string') return value
+  if (typeof value === 'bigint') return value.toString()
   try {
-    return JSON.stringify(value) ?? String(value)
+    return toWireJson(value) ?? String(value)
   } catch {
     return String(value)
   }

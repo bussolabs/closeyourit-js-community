@@ -1,6 +1,6 @@
 {
   "files": {
-    "dist/closeyourit.min.js": { "raw": 69500, "brotli": 19968 },
+    "dist/closeyourit.min.js": { "raw": 71000, "brotli": 20300 },
     "dist/helpdesk.min.js": { "raw": 9500, "brotli": 3700 }
   }
 }

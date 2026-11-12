@@ -18,6 +18,9 @@ export function chunkBatches<T>(items: T[], size: number): T[][] {
   return chunks
 }
 
+/// Receives what the flush callback threw, with the batch it was handling.
+export type FlushErrorHandler = (error: unknown, batch: EventPayload[]) => void
+
 export class LogBuffer {
   private events: EventPayload[] = []
   private timer: ReturnType<typeof setInterval> | undefined
@@ -27,6 +30,10 @@ export class LogBuffer {
     private readonly onFlush: (batch: EventPayload[]) => void,
     private readonly batchSize: number = 50,
     private readonly flushIntervalMs: number = 5000,
+    /// Receives what [onFlush] threw. The flush itself never throws: from the
+    /// timer an exception would be uncaught, and on Node that shuts the host
+    /// process down (CYJS-76).
+    private readonly onError: FlushErrorHandler = () => {},
   ) {}
 
   get length(): number {
@@ -40,12 +47,21 @@ export class LogBuffer {
     if (this.events.length >= this.batchSize) this.flush()
   }
 
-  /// Drains the buffer handing the batch to [onFlush] (no-op if empty).
+  /// Drains the buffer handing the batch to [onFlush] (no-op if empty). Never
+  /// throws: a failure of [onFlush] goes to [onError].
   flush(): void {
     if (this.events.length === 0) return
     const batch = this.events
     this.events = []
-    this.onFlush(batch)
+    try {
+      this.onFlush(batch)
+    } catch (error) {
+      try {
+        this.onError(error, batch)
+      } catch {
+        // A faulty error handler must not bring the exception back either.
+      }
+    }
   }
 
   private ensureTimer(): void {

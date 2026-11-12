@@ -60,12 +60,23 @@ export function installProcessHandlers(
 
 async function flushWithTimeout(client: Client, timeoutMs: number): Promise<void> {
   await Promise.race([
-    client.flush(),
+    settledFlush(client),
     new Promise<void>((resolve) => {
       const timer = setTimeout(resolve, timeoutMs)
       ;(timer as { unref?: () => void }).unref?.()
     }),
   ])
+}
+
+// Never rejects: this runs inside the process handlers themselves, so a failing
+// flush would become a new unhandled rejection and skip the exit policy above
+// (CYJS-76).
+async function settledFlush(client: Client): Promise<void> {
+  try {
+    await client.flush()
+  } catch {
+    // The telemetry is lost; the host's crash semantics are not.
+  }
 }
 
 function describeError(error: unknown): string {

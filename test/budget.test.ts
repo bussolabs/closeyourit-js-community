@@ -67,6 +67,22 @@ describe('payloadBytes', () => {
   it('measures the bytes of the serialized JSON', () => {
     expect(payloadBytes({ a: 1 })).toBe(utf8Bytes('{"a":1}'))
   })
+
+  it('measures a bigint as the string the transport sends (CYJS-76)', () => {
+    expect(payloadBytes({ id: 9007199254740993n })).toBe(
+      utf8Bytes('{"id":"9007199254740993"}'),
+    )
+  })
+})
+
+describe('capEvent — bigint (CYJS-76)', () => {
+  it('reduces an oversized event carrying a bigint without throwing', () => {
+    const ev = eventOfBytes(2000)
+    ev['extra'] = { row_id: 9007199254740993n, pad: 'x'.repeat(2000) }
+    const out = capEvent(ev, 1000)
+    expect(payloadBytes(out)).toBeLessThanOrEqual(1000)
+    expect(out['truncated']).toBe(true)
+  })
 })
 
 describe('capEvent — events channel (error/message)', () => {
@@ -286,6 +302,32 @@ describe('chunkLogBatch — logs channel (batch)', () => {
 
   it('empty batch: no chunk', () => {
     expect(chunkLogBatch([], 500, 1000)).toEqual([])
+  })
+
+  it('leaves out only the unserializable log and reports it (CYJS-76)', () => {
+    const loop: EventPayload = { event_id: 'loop', message: 'broken' }
+    loop['self'] = loop
+    const dropped: unknown[] = []
+    const chunks = chunkLogBatch(
+      [{ event_id: 'a', message: 'ok' }, loop, { event_id: 'b', message: 'ok' }],
+      10_000,
+      1000,
+      (error) => dropped.push(error),
+    )
+    expect(chunks.flat().map((log) => log['event_id'])).toEqual(['a', 'b'])
+    expect(dropped).toHaveLength(1)
+    expect(dropped[0]).toBeInstanceOf(TypeError)
+  })
+
+  it('caps a giant log carrying a bigint, keeping the id as a string (CYJS-76)', () => {
+    const batch: EventPayload[] = [
+      { event_id: 'big', message: 'z'.repeat(5000), row_id: 9007199254740993n },
+    ]
+    const chunks = chunkLogBatch(batch, 300, 1000)
+    const log = chunks.flat()[0]
+    expect(log?.['truncated']).toBe(true)
+    expect(log?.['row_id']).toBe('9007199254740993')
+    expect(payloadBytes(chunks[0])).toBeLessThanOrEqual(300)
   })
 })
 

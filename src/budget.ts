@@ -31,6 +31,7 @@
 // injected by `beforeSend`) that the specific strategy did not anticipate.
 
 import type { EventPayload } from './types'
+import { toWireJson } from './wireJson'
 
 /// Conservative budget per single HTTP request, in UTF-8 bytes of the JSON body
 /// (NOT compressed — the transport does not gzip). Derived from the contract (API.md §6):
@@ -125,9 +126,10 @@ function manualUtf8Bytes(value: string): number {
   return bytes
 }
 
-/// UTF-8 bytes of the payload serialized as JSON.
+/// UTF-8 bytes of the payload serialized as JSON, with the same serializer as
+/// the transport (`bigint` as a decimal string). Throws on unserializable values.
 export function payloadBytes(payload: unknown): number {
-  return utf8Bytes(JSON.stringify(payload) ?? '')
+  return utf8Bytes(toWireJson(payload) ?? '')
 }
 
 // Bytes of a string's JSON contribution: `JSON.stringify` wraps it in quotes
@@ -206,9 +208,10 @@ function largestTopLevel(
 }
 
 // JSON-safe clone: payloads are already JSON (they go on the wire), so we do not
-// mutate the callers' input while trimming the nested branches.
+// mutate the callers' input while trimming the nested branches. Written with the
+// wire serializer: a `bigint` becomes the same string the transport would send.
 function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T
+  return JSON.parse(toWireJson(value) ?? 'null') as T
 }
 
 /// Reduces an error/message event until it fits in [budget] bytes, preserving
@@ -278,10 +281,16 @@ export function capLogEvent(input: EventPayload, budget: number): EventPayload {
 /// Splits a log batch into several requests, each under [budget] bytes and under
 /// [maxCount] elements, without losing any log. Single oversized logs are first
 /// truncated by [capLogEvent]. The empty array yields no chunk.
+///
+/// A log that cannot be serialized (cycle, throwing `toJSON`) would make the
+/// whole request fail: it is left out ALONE and handed to [onUnserializable],
+/// while the others are chunked as usual (CYJS-76). The check is the size
+/// measurement the chunking already needs, so no log is serialized twice for it.
 export function chunkLogBatch(
   batch: EventPayload[],
   budget: number,
   maxCount: number,
+  onUnserializable: (error: unknown) => void = () => {},
 ): EventPayload[][] {
   const chunks: EventPayload[][] = []
   let current: EventPayload[] = []
@@ -295,18 +304,36 @@ export function chunkLogBatch(
 
   for (const raw of batch) {
     // Every log must fit alone in a chunk: we cap it at budget minus the brackets.
-    const log = capLogEvent(raw, budget - ARRAY_BRACKETS)
+    const measured = measuredLog(raw, budget - ARRAY_BRACKETS, onUnserializable)
+    if (!measured) continue
+    const { log, bytes } = measured
     // Bytes added to the chunk: the element + the comma if it is not the first. The
     // JSON of an array is `[` + join(',') + `]`, so the count is exact.
-    const add = payloadBytes(log) + (current.length > 0 ? 1 : 0)
+    const add = bytes + (current.length > 0 ? 1 : 0)
     const overBytes = currentBytes + add > budget
     const overCount = current.length >= maxCount
     if (current.length > 0 && (overBytes || overCount)) push()
     current.push(log)
-    currentBytes += current.length > 1 ? payloadBytes(log) + 1 : payloadBytes(log)
+    currentBytes += current.length > 1 ? bytes + 1 : bytes
   }
   push()
   return chunks
+}
+
+// The log capped to [budget] with its bytes, or `undefined` (after reporting the
+// error) when it cannot be serialized.
+function measuredLog(
+  raw: EventPayload,
+  budget: number,
+  onUnserializable: (error: unknown) => void,
+): { log: EventPayload; bytes: number } | undefined {
+  try {
+    const log = capLogEvent(raw, budget)
+    return { log, bytes: payloadBytes(log) }
+  } catch (error) {
+    onUnserializable(error)
+    return undefined
+  }
 }
 
 /// Reduces a replay chunk until it fits in [budget]: drops rrweb events from the
