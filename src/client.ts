@@ -20,6 +20,7 @@ import {
 } from './budget'
 import { LOGS_MAX_BATCH, LogBuffer } from './logBuffer'
 import { meetsMinLevel, normalizeLogLevel } from './logLevel'
+import { messageText } from './messageText'
 import { buildPerformanceIssueEvent, buildSlowMethodEvent } from './metricEvents'
 import {
   disabledReason,
@@ -275,17 +276,20 @@ export class Client {
     })
   }
 
-  /// Captures a diagnostic message.
+  /// Captures a diagnostic message. Any value is turned into text
+  /// (`messageText`); an empty or missing message is ignored, like a log.
   captureMessage(message: string, level: EventLevel = 'info'): void {
     if (!this.enabled || diagnosticsSuppressed()) return
     this.guarded('captureMessage', () => {
+      const text = messageText(message)
+      if (text.trim().length === 0) return
       if (!this.sampled(this.options.sampleRate)) {
         this.noteDrop('sample_rate')
         return
       }
 
       const payload = buildMessageEvent({
-        message,
+        message: text,
         environment: this.options.environment,
         release: this.options.release,
         level,
@@ -302,7 +306,8 @@ export class Client {
   // ------------------------------------------------------------------- logs
 
   /// Buffers a structured log (sent in batches to `/logs`). No-op if logs are
-  /// disabled, below `logsMinLevel`, not sampled or with an empty message.
+  /// disabled, below `logsMinLevel`, not sampled or with an empty message
+  /// (after `messageText`: an `Error` is sent as its message).
   log(
     level: LogLevel,
     message: string,
@@ -317,11 +322,12 @@ export class Client {
         this.noteDrop('sample_rate')
         return
       }
-      if (message.trim().length === 0) return
+      const text = messageText(message)
+      if (text.trim().length === 0) return
 
       this.logBuffer.add(
         buildLogEvent({
-          message,
+          message: text,
           level: normalized,
           environment: this.options.environment,
           release: this.options.release,

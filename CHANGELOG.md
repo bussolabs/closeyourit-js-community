@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.16.11] - 2026-11-12
+
+### Fixed
+
+- **Un log o un messaggio che non è testo non manda più in errore l'applicazione.** Con la libreria accesa, `log`, `logger.*` e `captureMessage` accettano qualunque valore: un errore intero viene spedito come il suo messaggio (o il suo nome, se il messaggio è vuoto), un numero o un oggetto come testo. Un valore mancante, o uno che non si riesce a trasformare in testo (per esempio un oggetto che contiene sé stesso), viene ignorato senza errori, come succedeva già a libreria spenta. Da ora anche `captureMessage` ignora un messaggio vuoto, come già facevano i log: chi lo usava per spedire un evento senza testo non lo vedrà più arrivare. (CYJS-77)
+
 ## [0.16.10] - 2026-11-11
 
 ### Fixed

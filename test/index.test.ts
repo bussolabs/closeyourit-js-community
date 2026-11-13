@@ -236,6 +236,28 @@ describe('facade — capture', () => {
     expect(batch[0].message).toBe('order created')
   })
 
+  it('accepts non-string messages without throwing (CYJS-77)', async () => {
+    CloseYourIt.init(config)
+    expect(CloseYourIt.isEnabled()).toBe(true)
+    expect(() => {
+      CloseYourIt.log('error', new Error('payment declined') as never)
+      CloseYourIt.log('info', undefined as never)
+      CloseYourIt.captureMessage(null as never)
+      CloseYourIt.captureMessage({ area: 'cache' } as never)
+    }).not.toThrow()
+    await CloseYourIt.flush()
+
+    const urls = fetchMock.mock.calls.map((c) => c[0] as string)
+    expect(urls.filter((url) => url.includes('/store'))).toHaveLength(1)
+    const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string)
+    expect(body.message).toEqual({ formatted: '{"area":"cache"}' })
+
+    const logs = fetchMock.mock.calls.find((c) => (c[0] as string).includes('/logs'))
+    const batch = JSON.parse((logs![1] as RequestInit).body as string)
+    const logMessages = batch.map((log: { message: string }) => log.message)
+    expect(logMessages).toEqual(['payment declined'])
+  })
+
   it('setTraceId propagates the trace_id to events', () => {
     CloseYourIt.init(config)
     CloseYourIt.setTraceId('trace-42')

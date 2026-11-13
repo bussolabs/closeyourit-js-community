@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { Client } from '../src/client'
+import { Client } from '../src/client'
 import { CloseYourItLogger } from '../src/logger'
+import type { Transport } from '../src/transport'
+import type { EventPayload } from '../src/types'
 
 function fakeClient(): { log: ReturnType<typeof vi.fn> } {
   return { log: vi.fn() }
@@ -49,5 +51,39 @@ describe('CloseYourItLogger', () => {
   it('is null-safe before init (no throw, no call)', () => {
     const logger = new CloseYourItLogger(() => null)
     expect(() => logger.error('x')).not.toThrow()
+  })
+})
+
+// With a real, enabled client: an Error or a missing value must not reach the
+// application as an exception (CYJS-77).
+describe('CloseYourItLogger — non-string messages with the client enabled', () => {
+  it('sends an Error as its message and ignores a missing one', async () => {
+    const send = vi.fn((_payload: unknown, _url: string) => true)
+    const client = new Client(
+      {
+        endpointUrl: 'https://www.closeyour.it',
+        publicKey: 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+        projectId: 'p',
+        environment: 'production',
+      },
+      {
+        transport: { send, flush: vi.fn(async () => {}) } as unknown as Transport,
+        random: () => 0,
+      },
+    )
+    expect(client.enabled).toBe(true)
+    const logger = new CloseYourItLogger(() => client, 'payments')
+
+    expect(() => {
+      logger.error(new Error('card declined') as never)
+      logger.warn(undefined as never)
+      logger.info(null as never)
+    }).not.toThrow()
+    await client.flush()
+
+    const batch = send.mock.calls[0]![0] as EventPayload[]
+    expect(batch.map((log) => log['message'])).toEqual(['card declined'])
+    expect(client.stats.toObject().reasons.error).toBe(0)
+    await client.close()
   })
 })

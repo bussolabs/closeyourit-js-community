@@ -718,3 +718,107 @@ describe('Client — unserializable data (CYJS-76)', () => {
     expect(client.stats.toObject().reasons.error).toBe(1)
   })
 })
+
+// Plain JavaScript callers pass anything as a message; with the client enabled
+// the scrubber used to throw on a non-string (CYJS-77).
+describe('Client — non-string messages (CYJS-77)', () => {
+  function enabledClient(): { client: Client; transport: FakeTransport } {
+    const made = makeClient()
+    expect(made.client.enabled).toBe(true)
+    return made
+  }
+
+  function cyclicObject(): Record<string, unknown> {
+    const loop: Record<string, unknown> = {}
+    loop['self'] = loop
+    return loop
+  }
+
+  type SentLogs = {
+    messages: unknown[]
+    client: Client
+  }
+
+  async function sentLogs(write: (client: Client) => void): Promise<SentLogs> {
+    const { client, transport } = enabledClient()
+    expect(() => write(client)).not.toThrow()
+    await client.flush()
+    const batches = transport.calls.map((call) => call.payload as EventPayload[])
+    const messages = batches.flat().map((log) => log['message'])
+    return { messages, client }
+  }
+
+  it('sends a log given a whole Error as the error message', async () => {
+    const error = new Error('payment declined') as never
+    const { messages, client } = await sentLogs((c) => c.log('error', error))
+    expect(messages).toEqual(['payment declined'])
+    expect(client.stats.toObject().reasons.error).toBe(0)
+  })
+
+  it('falls back to the Error name when its message is empty', async () => {
+    const error = new TypeError() as never
+    const { messages } = await sentLogs((c) => c.log('error', error))
+    expect(messages).toEqual(['TypeError'])
+  })
+
+  it('ignores a missing log message without errors', async () => {
+    const { messages, client } = await sentLogs((c) => {
+      c.log('info', undefined as never)
+      c.log('info', null as never)
+    })
+    expect(messages).toEqual([])
+    expect(client.stats.toObject().reasons.error).toBe(0)
+  })
+
+  it('sends numbers and objects as text in a log', async () => {
+    const { messages } = await sentLogs((c) => {
+      c.log('info', 42 as never)
+      c.log('info', { step: 'checkout' } as never)
+    })
+    expect(messages).toEqual(['42', '{"step":"checkout"}'])
+  })
+
+  it('drops a log whose conversion fails, without errors', async () => {
+    const loop = cyclicObject() as never
+    const { messages, client } = await sentLogs((c) => c.log('info', loop))
+    expect(messages).toEqual([])
+    expect(client.stats.toObject().reasons.error).toBe(0)
+  })
+
+  it('still scrubs secrets from a normal text log', async () => {
+    const text = 'login failed password=hunter2 for user'
+    const { messages } = await sentLogs((c) => c.log('info', text))
+    expect(messages).toHaveLength(1)
+    expect(messages[0]).not.toContain('hunter2')
+    expect(messages[0]).toContain('[FILTERED]')
+  })
+
+  it('sends a diagnostic message given an Error, a number or an object as text', () => {
+    const { client, transport } = enabledClient()
+    expect(() => {
+      client.captureMessage(new Error('cache down') as never)
+      client.captureMessage(404 as never)
+      client.captureMessage({ area: 'cache' } as never)
+    }).not.toThrow()
+    const payloads = transport.calls.map((call) => call.payload as EventPayload)
+    expect(payloads.map((payload) => payload['message'])).toEqual([
+      { formatted: 'cache down' },
+      { formatted: '404' },
+      { formatted: '{"area":"cache"}' },
+    ])
+  })
+
+  it('ignores a missing, empty or unconvertible diagnostic message', () => {
+    const { client, transport } = enabledClient()
+    expect(() => {
+      client.captureMessage(undefined as never)
+      client.captureMessage(null as never)
+      client.captureMessage('')
+      client.captureMessage('   ')
+      client.captureMessage(cyclicObject() as never)
+    }).not.toThrow()
+    expect(transport.send).not.toHaveBeenCalled()
+    expect(client.stats.toObject().reasons.error).toBe(0)
+    expect(client.stats.get('dropped')).toBe(0)
+  })
+})
