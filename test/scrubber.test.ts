@@ -84,6 +84,92 @@ describe('scrubMessage', () => {
   })
 })
 
+// CYJS-86 — the NUL character (U+0000) is removed from the texts before sending,
+// as the Python SDK does. Only U+0000: the other invisible characters stay.
+describe('NUL character removal (CYJS-86)', () => {
+  it('removes every NUL from a message', () => {
+    expect(scrubMessage('order\u0000 42\u0000 failed\u0000')).toBe('order 42 failed')
+    expect(scrubMessage('\u0000\u0000\u0000')).toBe('')
+  })
+
+  it('leaves plain and empty messages untouched', () => {
+    expect(scrubMessage('cache miss for key foo')).toBe('cache miss for key foo')
+    expect(scrubMessage('')).toBe('')
+  })
+
+  it('removes only U+0000, not the other control characters', () => {
+    expect(scrubMessage('a\tb\u0001c\u001fd\u0000e')).toBe('a\tb\u0001c\u001fde')
+  })
+
+  it('removes NUL and redacts the credential, and a second pass changes nothing', () => {
+    const once = scrubMessage('login failed\u0000 password=hunter2\u0000 for user')
+    expect(once).toBe(`login failed ${FILTERED} for user`)
+    expect(scrubMessage(once)).toBe(once)
+  })
+
+  it('redacts a credential whose sensitive name is split by NUL', () => {
+    for (const input of [
+      'pass\u0000word=hunter2',
+      'to\u0000ken: EXAMPLE_NOT_A_CREDENTIAL',
+      'Author\u0000ization: Bearer EXAMPLE_NOT_A_CREDENTIAL',
+    ]) {
+      const redacted = scrubMessage(input)
+      expect(redacted).toContain(FILTERED)
+      expect(redacted).not.toContain('hunter2')
+      expect(redacted).not.toContain('EXAMPLE_NOT_A_CREDENTIAL')
+      expect(redacted).not.toContain('\u0000')
+    }
+  })
+
+  it('removes NUL from string values inside nested objects and arrays', () => {
+    const result = scrub({
+      note: 'first\u0000 line',
+      user: { name: 'Ada\u0000 Lovelace', tags: ['a\u0000', '', 'plain'] },
+      items: [{ label: '\u0000x\u0000y\u0000', qty: 2 }],
+    })
+    expect(result).toEqual({
+      note: 'first line',
+      user: { name: 'Ada Lovelace', tags: ['a', '', 'plain'] },
+      items: [{ label: 'xy', qty: 2 }],
+    })
+    expect(scrub(result)).toEqual(result)
+  })
+
+  it('leaves keys and non-string values as they are', () => {
+    const result = scrub({
+      'k\u0000ey': 'v\u0000',
+      count: 3,
+      ok: true,
+      none: null,
+      missing: undefined,
+      big: 10n,
+    }) as Record<string, unknown>
+    expect(Object.keys(result)).toContain('k\u0000ey')
+    expect(result['k\u0000ey']).toBe('v')
+    expect(result['count']).toBe(3)
+    expect(result['ok']).toBe(true)
+    expect(result['none']).toBe(null)
+    expect(result['missing']).toBe(undefined)
+    expect(result['big']).toBe(10n)
+  })
+
+  it('still redacts sensitive keys and returns a copy without touching the input', () => {
+    const input = { password: 'hunter\u00002', nested: { msg: 'a\u0000b' } }
+    const result = scrub(input)
+    expect(result).toEqual({ password: FILTERED, nested: { msg: 'ab' } })
+    expect(input.nested.msg).toBe('a\u0000b')
+    expect(result.nested).not.toBe(input.nested)
+  })
+
+  it('still guards cycles while removing NUL', () => {
+    const obj: Record<string, unknown> = { text: 'x\u0000' }
+    obj['self'] = obj
+    const result = scrub(obj) as Record<string, unknown>
+    expect(result['text']).toBe('x')
+    expect(result['self']).toBe('[Circular]')
+  })
+})
+
 // CYJS-38 — an access header written inside free text (the message of
 // an exception, a log line with the `curl` that failed) only took away the
 // scheme: `Authorization: Bearer …` became `[FILTERED] <value>`, i.e. the secret

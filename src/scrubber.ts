@@ -64,6 +64,14 @@ const SENSITIVE_IN_MESSAGE = new RegExp(
 
 export const FILTERED = '[FILTERED]'
 
+// CYJS-86 — the NUL character (U+0000) is removed from every text that passes
+// through here, as the Python SDK does: only U+0000, every occurrence, nothing else.
+const NUL = /\u0000/g
+
+function stripNul(input: string): string {
+  return input.includes('\u0000') ? input.replace(NUL, '') : input
+}
+
 /// `true` if the key is considered sensitive (partial match, case-insensitive).
 export function isSensitiveKey(key: string): boolean {
   return SENSITIVE_KEY.test(key)
@@ -71,7 +79,8 @@ export function isSensitiveKey(key: string): boolean {
 
 /// Deep copy of [value] with the sensitive values redacted. A matching key
 /// redacts the whole value (maps/lists too); nested Maps and Arrays
-/// are traversed. Cycles guarded by `seen`.
+/// are traversed. Cycles guarded by `seen`. Every string value loses the NUL
+/// character; keys and non-string values are left as they are.
 export function scrub<T>(value: T, seen: WeakSet<object> = new WeakSet()): T {
   return scrubValue(value, seen) as T
 }
@@ -92,6 +101,7 @@ function scrubValue(value: unknown, seen: WeakSet<object>): unknown {
     }
     return result
   }
+  if (typeof value === 'string') return stripNul(value)
   return value
 }
 
@@ -102,8 +112,11 @@ function scrubValue(value: unknown, seen: WeakSet<object>): unknown {
 /// A header keeps its own name and loses the value
 /// (`Authorization: Bearer x` → `Authorization: [FILTERED]`): same shape as the backend,
 /// which is the PII authority, so the redacted text is identical whichever SDK it comes from.
+///
+/// The NUL character is removed first, so a credential split by it
+/// (`pass\u0000word=…`) is still recognized and redacted.
 export function scrubMessage(input: string): string {
-  return input.replace(
+  return stripNul(input).replace(
     SENSITIVE_IN_MESSAGE,
     (match, headerName?: string, separator?: string) =>
       headerName === undefined ? FILTERED : `${headerName}${separator}${FILTERED}`,

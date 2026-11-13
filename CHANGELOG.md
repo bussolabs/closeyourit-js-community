@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-11-13
+
+### Fixed
+
+- **Il carattere nullo non arriva più al server dai testi già ripuliti.** La pulizia che nasconde le credenziali ora toglie anche ogni carattere nullo (U+0000), come fa la libreria Python. Vale per i testi che passano già da lì: messaggi di errori, log, breadcrumb e richieste di assistenza, e i valori di testo, anche annidati in oggetti o elenchi, di tag, extra, contesti, richiesta, attributi dei log e dati delle breadcrumb. Nei messaggi il carattere viene tolto prima di nascondere le credenziali, così `pass\0word=…` viene riconosciuto. I nomi dei campi, i numeri e gli altri valori non di testo restano come sono, e i campi che non passano da questa pulizia non cambiano. (CYJS-86)
+
 ## [0.17.0] - 2026-11-13
 
 ### Fixed
