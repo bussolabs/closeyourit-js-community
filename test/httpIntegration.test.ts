@@ -2,9 +2,12 @@
 // `http` breadcrumbs AND the performance verdicts (slow_external_http,
 // repeated_http). Real client with a fake transport: the wire is asserted.
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { Client } from '../src/client'
-import { installHttpInstrumentation } from '../src/integrations/browser/http'
+import {
+  RepeatedHttpTracker,
+  installHttpInstrumentation,
+} from '../src/integrations/browser/http'
 import type { Transport } from '../src/transport'
 import type { CloseYourItOptions, EventPayload } from '../src/types'
 
@@ -59,6 +62,7 @@ afterEach(() => {
   uninstall = () => {}
   ;(window as { fetch?: unknown }).fetch = undefined
   vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 function stubFetch(status = 200): void {
@@ -200,6 +204,143 @@ describe('http — repeated_http', () => {
   })
 })
 
+describe('http — repeated_http tracker lifetime', () => {
+  it('drops keys with no hits in the window and keeps the recent ones', () => {
+    const clock = manualClock()
+    const tracker = new RepeatedHttpTracker(5000, clock.now)
+
+    tracker.record('old')
+    clock.set(3000)
+    tracker.record('recent')
+    expect(keyCount(tracker)).toBe(2)
+
+    clock.set(6000)
+    tracker.record('new')
+
+    expect(keyCount(tracker)).toBe(2)
+    // 'recent' kept its hit at 3000: the next one is its second in the window.
+    expect(tracker.record('recent')).toBe(2)
+    expect(keyCount(tracker)).toBe(2)
+  })
+
+  it('expires a hit exactly at the window boundary', () => {
+    const clock = manualClock()
+    const tracker = new RepeatedHttpTracker(5000, clock.now)
+
+    tracker.record('a')
+    clock.set(4999)
+    tracker.record('b')
+    expect(keyCount(tracker)).toBe(2)
+
+    clock.set(5000)
+    tracker.record('b')
+
+    expect(keyCount(tracker)).toBe(1)
+    expect(tracker.record('a')).toBe(1)
+  })
+
+  it('restarts the count after the hits expire', () => {
+    const clock = manualClock()
+    const tracker = new RepeatedHttpTracker(5000, clock.now)
+
+    expect(tracker.record('a')).toBe(1)
+    clock.set(1)
+    expect(tracker.record('a')).toBe(2)
+    clock.set(2)
+    expect(tracker.record('a')).toBe(3)
+
+    clock.set(5002)
+    expect(tracker.record('a')).toBe(1)
+    expect(keyCount(tracker)).toBe(1)
+  })
+
+  it('a new call after the window leaves only recent URLs in the tracker', async () => {
+    stubFetch()
+    const clock = manualClock()
+    const h = harness(
+      { detectPerformanceIssues: true, slowExternalThresholdMs: 0 },
+      clock.now,
+    )
+    const record = spyOnRecord()
+    uninstall = installHttpInstrumentation(h.client)
+
+    for (let i = 0; i < 200; i += 1) {
+      await window.fetch(`https://host-${i}.ext/v1/items`)
+    }
+    const tracker = trackerOf(record)
+    expect(keyCount(tracker)).toBe(200)
+
+    clock.set(5000)
+    await window.fetch('https://fresh.ext/v1/items')
+
+    expect(keyCount(tracker)).toBe(1)
+  })
+
+  it('a repeat counted again after expiry emits the verdict again', async () => {
+    stubFetch()
+    const clock = manualClock()
+    const h = harness(
+      {
+        detectPerformanceIssues: true,
+        slowExternalThresholdMs: 0,
+        repeatedHttpThreshold: 2,
+      },
+      clock.now,
+    )
+    uninstall = installHttpInstrumentation(h.client)
+
+    await window.fetch('https://api.ext/v1/items/111')
+    await window.fetch('https://api.ext/v1/items/111')
+    clock.set(5000)
+    await window.fetch('https://api.ext/v1/items/111')
+    await window.fetch('https://api.ext/v1/items/111')
+
+    const repeated = h.calls.filter(
+      (c) => (c.payload as EventPayload)['subtype'] === 'repeated_http',
+    )
+    expect(repeated).toHaveLength(2)
+  })
+
+  it('breadcrumbs only (detect off) → nothing recorded, breadcrumb still marked slow', async () => {
+    stubFetch()
+    const h = harness({ slowExternalThresholdMs: 100 }, steppingClock(1500))
+    const record = spyOnRecord()
+    uninstall = installHttpInstrumentation(h.client)
+
+    await window.fetch('https://api.ext/v1/items/1')
+    await window.fetch('https://other.ext/v1/users/2')
+
+    expect(record).not.toHaveBeenCalled()
+    const data = h.crumb()!['data'] as Record<string, unknown>
+    expect(data['slow_external_http']).toBe(true)
+  })
+
+  it('captureExternalHttp off → nothing recorded, breadcrumb still recorded', async () => {
+    stubFetch()
+    const h = harness({ detectPerformanceIssues: true, captureExternalHttp: false })
+    const record = spyOnRecord()
+    uninstall = installHttpInstrumentation(h.client)
+
+    await window.fetch('https://api.ext/v1/items/1')
+    await window.fetch('https://other.ext/v1/users/2')
+
+    expect(record).not.toHaveBeenCalled()
+    expect(h.crumb()).not.toBeNull()
+  })
+
+  it('detect and captureExternalHttp on → external calls are recorded', async () => {
+    stubFetch()
+    const h = harness({ detectPerformanceIssues: true, slowExternalThresholdMs: 0 })
+    const record = spyOnRecord()
+    uninstall = installHttpInstrumentation(h.client)
+
+    await window.fetch('https://api.ext/v1/items/1')
+
+    expect(record).toHaveBeenCalledTimes(1)
+    expect(keyCount(trackerOf(record))).toBe(1)
+  })
+})
+
 describe('http — XHR', () => {
   it('also tracks XMLHttpRequest', () => {
     const proto = XMLHttpRequest.prototype
@@ -228,6 +369,37 @@ describe('http — XHR', () => {
     }
   })
 })
+
+// Spy on the real tracker method: the instrumentation creates its own tracker,
+// observed through the calls instead of being injected.
+function spyOnRecord(): MockInstance<RepeatedHttpTracker['record']> {
+  return vi.spyOn(RepeatedHttpTracker.prototype, 'record')
+}
+
+// The tracker instance the instrumentation recorded on.
+function trackerOf(
+  record: MockInstance<RepeatedHttpTracker['record']>,
+): RepeatedHttpTracker {
+  const tracker = record.mock.contexts.at(-1) as RepeatedHttpTracker | undefined
+  if (!tracker) throw new Error('the tracker never recorded a hit')
+  return tracker
+}
+
+// Number of URL keys the tracker still holds (private map read by the test).
+function keyCount(tracker: RepeatedHttpTracker): number {
+  return (tracker as unknown as { hits: Map<string, number[]> }).hits.size
+}
+
+// Fake clock that only moves when the test sets it.
+function manualClock(): { now: () => number; set: (ms: number) => void } {
+  let t = 0
+  return {
+    now: () => t,
+    set: (ms: number) => {
+      t = ms
+    },
+  }
+}
 
 // Injectable clock that advances by [stepMs] on every read.
 function steppingClock(stepMs: number): () => number {

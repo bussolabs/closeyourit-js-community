@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.16.12] - 2026-11-13
+
+### Fixed
+
+- **Una pagina aperta a lungo non accumula più memoria per le chiamate esterne.** Nel browser l'elenco usato per riconoscere le chiamate ripetute (`repeated_http`) ora tiene solo gli indirizzi chiamati nella finestra `repeatedHttpWindowMs`: a ogni nuova chiamata quelli più vecchi escono. L'elenco si riempie solo con `detectPerformanceIssues` e `captureExternalHttp` accesi; con le sole breadcrumb `http` resta vuoto e le breadcrumb, compresa la marcatura delle richieste lente, funzionano come prima. L'avviso sulle chiamate ripetute scatta come prima. Il tetto del bundle non compresso è stato alzato di 0,3 KB per questa pulizia. (CYJS-80)
+
 ## [0.16.11] - 2026-11-12
 
 ### Fixed

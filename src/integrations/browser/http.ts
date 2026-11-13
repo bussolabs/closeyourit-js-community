@@ -25,10 +25,21 @@ export class RepeatedHttpTracker {
   record(key: string): number {
     const current = this.now()
     const cutoff = current - this.windowMs
-    const timestamps = (this.hits.get(key) ?? []).filter((t) => t > cutoff)
+    this.prune(cutoff)
+    const timestamps = this.hits.get(key) ?? []
     timestamps.push(current)
     this.hits.set(key, timestamps)
     return timestamps.length
+  }
+
+  // Drops hits outside the window and the keys left without any: on a
+  // long-lived page with many distinct URLs the map would otherwise grow forever.
+  private prune(cutoff: number): void {
+    for (const [key, timestamps] of this.hits) {
+      const recent = timestamps.filter((t) => t > cutoff)
+      if (recent.length) this.hits.set(key, recent)
+      else this.hits.delete(key)
+    }
   }
 }
 
@@ -157,9 +168,13 @@ function handleCompleted(
     const path = templatizePath(pathnameOf(url))
     // The detect/captureExternalHttp gate and the slow threshold live in the client.
     client.recordExternalHttp(host, path, durationMs)
-    const count = tracker.record(`${host}\n${path}`)
-    if (count === options.repeatedHttpThreshold) {
-      client.recordRepeatedHttp(host, path, count)
+    // The patch may be installed for breadcrumbs alone: track repeats only when
+    // the `repeated_http` verdict can be emitted, otherwise the tracker stays empty.
+    if (options.detectPerformanceIssues && options.captureExternalHttp) {
+      const count = tracker.record(`${host}\n${path}`)
+      if (count === options.repeatedHttpThreshold) {
+        client.recordRepeatedHttp(host, path, count)
+      }
     }
   }
 }
