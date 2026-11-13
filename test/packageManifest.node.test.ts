@@ -15,7 +15,7 @@ interface PackageManifest {
   types: string
   unpkg: string
   jsdelivr: string
-  exports: Record<string, Record<string, string> | string>
+  exports: Record<string, Record<string, Record<string, string>> | string>
   engines: { node: string }
   publishConfig: { access: string }
 }
@@ -37,14 +37,38 @@ describe('npm package packaging contract (CYJS-11)', () => {
     expect(pkg.types).toBe('./dist/index.d.ts') // types
   })
 
-  it('exposes consistent and ordered import/require/types condition exports', () => {
-    const root = pkg.exports['.'] as Record<string, string>
-    expect(root.types).toBe('./dist/index.d.ts')
-    expect(root.import).toBe('./dist/index.mjs')
-    expect(root.require).toBe('./dist/index.js')
-    // `types` must precede import/require: TypeScript resolves the first condition
-    // that matches, so it must go first or the types are not found.
-    expect(Object.keys(root)[0]).toBe('types')
+  it('gives each format its own types in the root export', () => {
+    expect(pkg.exports['.']).toEqual({
+      import: { types: './dist/index.d.mts', default: './dist/index.mjs' },
+      require: { types: './dist/index.d.ts', default: './dist/index.js' },
+    })
+  })
+
+  // A single `.d.ts` for both conditions is read as CommonJS by an ESM consumer
+  // under nodenext ("masquerading as CJS", CYJS-84): every typed subpath must
+  // point `import` at `.d.mts` and `require` at `.d.ts`.
+  it('pairs every typed subpath with the declarations of its own format', () => {
+    let typed = 0
+    for (const [subpath, target] of Object.entries(pkg.exports)) {
+      if (typeof target === 'string') continue
+      typed++
+      expect(Object.keys(target), subpath).toEqual(['import', 'require'])
+      const base = target.import.default.replace(/\.mjs$/, '')
+      // `types` must precede `default`: TypeScript resolves the first condition
+      // that matches, so it must go first or the types are not found.
+      expect(target.import, subpath).toEqual({
+        types: `${base}.d.mts`,
+        default: `${base}.mjs`,
+      })
+      expect(Object.keys(target.import)[0], subpath).toBe('types')
+      expect(target.require, subpath).toEqual({
+        types: `${base}.d.ts`,
+        default: `${base}.js`,
+      })
+      expect(Object.keys(target.require)[0], subpath).toBe('types')
+    }
+    // Every module but the two <script> bundles ships types.
+    expect(typed).toBe(Object.keys(pkg.exports).length - 2)
   })
 
   it('exposes the IIFE browser bundle as the ./min subpath and for the CDNs', () => {
@@ -54,11 +78,10 @@ describe('npm package packaging contract (CYJS-11)', () => {
   })
 
   it('exposes the help desk button as its own subpath, apart from the main bundle', () => {
-    const helpdesk = pkg.exports['./helpdesk'] as Record<string, string>
-    expect(helpdesk.types).toBe('./dist/helpdesk.d.ts')
-    expect(helpdesk.import).toBe('./dist/helpdesk.mjs')
-    expect(helpdesk.require).toBe('./dist/helpdesk.js')
-    expect(Object.keys(helpdesk)[0]).toBe('types')
+    expect(pkg.exports['./helpdesk']).toEqual({
+      import: { types: './dist/helpdesk.d.mts', default: './dist/helpdesk.mjs' },
+      require: { types: './dist/helpdesk.d.ts', default: './dist/helpdesk.js' },
+    })
     expect(pkg.exports['./helpdesk/min']).toBe('./dist/helpdesk.min.js')
   })
 

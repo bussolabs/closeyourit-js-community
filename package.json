@@ -30,81 +30,156 @@
   "jsdelivr": "./dist/closeyourit.min.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
     },
     "./min": "./dist/closeyourit.min.js",
     "./react": {
-      "types": "./dist/react.d.ts",
-      "import": "./dist/react.mjs",
-      "require": "./dist/react.js"
+      "import": {
+        "types": "./dist/react.d.mts",
+        "default": "./dist/react.mjs"
+      },
+      "require": {
+        "types": "./dist/react.d.ts",
+        "default": "./dist/react.js"
+      }
     },
     "./next/server": {
-      "types": "./dist/next/server.d.ts",
-      "import": "./dist/next/server.mjs",
-      "require": "./dist/next/server.js"
+      "import": {
+        "types": "./dist/next/server.d.mts",
+        "default": "./dist/next/server.mjs"
+      },
+      "require": {
+        "types": "./dist/next/server.d.ts",
+        "default": "./dist/next/server.js"
+      }
     },
     "./vue": {
-      "types": "./dist/vue.d.ts",
-      "import": "./dist/vue.mjs",
-      "require": "./dist/vue.js"
+      "import": {
+        "types": "./dist/vue.d.mts",
+        "default": "./dist/vue.mjs"
+      },
+      "require": {
+        "types": "./dist/vue.d.ts",
+        "default": "./dist/vue.js"
+      }
     },
     "./nuxt/client": {
-      "types": "./dist/nuxt/client.d.ts",
-      "import": "./dist/nuxt/client.mjs",
-      "require": "./dist/nuxt/client.js"
+      "import": {
+        "types": "./dist/nuxt/client.d.mts",
+        "default": "./dist/nuxt/client.mjs"
+      },
+      "require": {
+        "types": "./dist/nuxt/client.d.ts",
+        "default": "./dist/nuxt/client.js"
+      }
     },
     "./nuxt/server": {
-      "types": "./dist/nuxt/server.d.ts",
-      "import": "./dist/nuxt/server.mjs",
-      "require": "./dist/nuxt/server.js"
+      "import": {
+        "types": "./dist/nuxt/server.d.mts",
+        "default": "./dist/nuxt/server.mjs"
+      },
+      "require": {
+        "types": "./dist/nuxt/server.d.ts",
+        "default": "./dist/nuxt/server.js"
+      }
     },
     "./helpdesk": {
-      "types": "./dist/helpdesk.d.ts",
-      "import": "./dist/helpdesk.mjs",
-      "require": "./dist/helpdesk.js"
+      "import": {
+        "types": "./dist/helpdesk.d.mts",
+        "default": "./dist/helpdesk.mjs"
+      },
+      "require": {
+        "types": "./dist/helpdesk.d.ts",
+        "default": "./dist/helpdesk.js"
+      }
     },
     "./helpdesk/min": "./dist/helpdesk.min.js",
     "./angular": {
-      "types": "./dist/angular.d.ts",
-      "import": "./dist/angular.mjs",
-      "require": "./dist/angular.js"
+      "import": {
+        "types": "./dist/angular.d.mts",
+        "default": "./dist/angular.mjs"
+      },
+      "require": {
+        "types": "./dist/angular.d.ts",
+        "default": "./dist/angular.js"
+      }
     },
     "./svelte": {
-      "types": "./dist/svelte.d.ts",
-      "import": "./dist/svelte.mjs",
-      "require": "./dist/svelte.js"
+      "import": {
+        "types": "./dist/svelte.d.mts",
+        "default": "./dist/svelte.mjs"
+      },
+      "require": {
+        "types": "./dist/svelte.d.ts",
+        "default": "./dist/svelte.js"
+      }
     },
     "./sveltekit/client": {
-      "types": "./dist/sveltekit/client.d.ts",
-      "import": "./dist/sveltekit/client.mjs",
-      "require": "./dist/sveltekit/client.js"
+      "import": {
+        "types": "./dist/sveltekit/client.d.mts",
+        "default": "./dist/sveltekit/client.mjs"
+      },
+      "require": {
+        "types": "./dist/sveltekit/client.d.ts",
+        "default": "./dist/sveltekit/client.js"
+      }
     },
     "./sveltekit/server": {
-      "types": "./dist/sveltekit/server.d.ts",
-      "import": "./dist/sveltekit/server.mjs",
-      "require": "./dist/sveltekit/server.js"
+      "import": {
+        "types": "./dist/sveltekit/server.d.mts",
+        "default": "./dist/sveltekit/server.mjs"
+      },
+      "require": {
+        "types": "./dist/sveltekit/server.d.ts",
+        "default": "./dist/sveltekit/server.js"
+      }
     },
     "./express": {
-      "types": "./dist/express.d.ts",
-      "import": "./dist/express.mjs",
-      "require": "./dist/express.js"
+      "import": {
+        "types": "./dist/express.d.mts",
+        "default": "./dist/express.mjs"
+      },
+      "require": {
+        "types": "./dist/express.d.ts",
+        "default": "./dist/express.js"
+      }
     },
     "./fastify": {
-      "types": "./dist/fastify.d.ts",
-      "import": "./dist/fastify.mjs",
-      "require": "./dist/fastify.js"
+      "import": {
+        "types": "./dist/fastify.d.mts",
+        "default": "./dist/fastify.mjs"
+      },
+      "require": {
+        "types": "./dist/fastify.d.ts",
+        "default": "./dist/fastify.js"
+      }
     },
     "./nest": {
-      "types": "./dist/nest.d.ts",
-      "import": "./dist/nest.mjs",
-      "require": "./dist/nest.js"
+      "import": {
+        "types": "./dist/nest.d.mts",
+        "default": "./dist/nest.mjs"
+      },
+      "require": {
+        "types": "./dist/nest.d.ts",
+        "default": "./dist/nest.js"
+      }
     },
     "./database": {
-      "types": "./dist/database.d.ts",
-      "import": "./dist/database.mjs",
-      "require": "./dist/database.js"
+      "import": {
+        "types": "./dist/database.d.mts",
+        "default": "./dist/database.mjs"
+      },
+      "require": {
+        "types": "./dist/database.d.ts",
+        "default": "./dist/database.js"
+      }
     }
   },
   "files": [
@@ -119,6 +194,7 @@
     "@angular/core": "22.2.1",
     "@angular/platform-browser": "22.2.1",
     "@angular/router": "22.2.1",
+    "@arethetypeswrong/cli": "0.18.5",
     "@nestjs/common": "12.4.0",
     "@nestjs/core": "12.4.0",
     "@nestjs/platform-express": "12.4.0",

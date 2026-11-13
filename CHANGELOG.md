@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-13
+
+### Fixed
+
+- **Chi importa la libreria come modulo moderno riceve i tipi giusti.** Ogni modulo con tipi ora indica a `import` le dichiarazioni `.d.mts` e a `require` le `.d.ts`: prima entrambi ricevevano le `.d.ts`, che TypeScript con `moduleResolution` `node16`/`nodenext` legge come CommonJS. Chi usa `require` non vede differenze, e le due versioni per il browser (`/min`, `/helpdesk/min`) restano agli stessi indirizzi. Il collaudo del pacchetto ora controlla ogni modulo con `@arethetypeswrong/cli` e blocca il rilascio se un formato riceve i tipi dell'altro. (CYJS-84)
+
 ## [0.16.12] - 2026-11-13
 
 ### Fixed

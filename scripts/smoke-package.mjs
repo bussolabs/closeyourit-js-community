@@ -88,17 +88,21 @@ try {
       'dist/index.mjs',
       'dist/index.js',
       'dist/index.d.ts',
+      'dist/index.d.mts',
       'dist/closeyourit.min.js',
       'dist/helpdesk.mjs',
       'dist/helpdesk.js',
       'dist/helpdesk.d.ts',
+      'dist/helpdesk.d.mts',
       'dist/helpdesk.min.js',
       'dist/react.mjs',
       'dist/react.js',
       'dist/react.d.ts',
+      'dist/react.d.mts',
       'dist/next/server.mjs',
       'dist/next/server.js',
       'dist/next/server.d.ts',
+      'dist/next/server.d.mts',
     ]
     const missing = required.filter((f) => !packed.includes(f))
     if (missing.length)
@@ -268,6 +272,36 @@ try {
         'smoke.mts',
       ],
       { cwd: consumer },
+    )
+  })
+
+  // 10) Types per format on EVERY typed subpath (CYJS-84): `attw` resolves each
+  //     entry point as node16-CJS, node16-ESM and bundler and fails when a format
+  //     gets the other format's declarations (e.g. "masquerading as CJS"). The
+  //     `node16` profile skips node10, which cannot see subpath exports at all;
+  //     the two IIFE bundles are for <script> tags and ship no types by design.
+  //     Pinned devDependency, run on the toolchain against the real tarball.
+  check('types per format on every subpath (attw)', () => {
+    const attwBin = join(
+      dirname(require.resolve('@arethetypeswrong/cli/package.json')),
+      'dist',
+      'index.js',
+    )
+    run(
+      process.execPath,
+      [
+        attwBin,
+        tarball,
+        '--profile',
+        'node16',
+        '--exclude-entrypoints',
+        './min',
+        './helpdesk/min',
+        '--format',
+        'table-flipped',
+      ],
+      // The report goes to the log: on failure it names the subpath and the problem.
+      { stdio: ['ignore', 'inherit', 'inherit'] },
     )
   })
 
