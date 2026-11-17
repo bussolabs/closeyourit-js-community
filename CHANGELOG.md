@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.17.2] - 2026-11-17
+
+### Security
+
+- **Esempio SvelteKit 3 su una versione sicura di SvelteKit.** Il progetto di prova `examples/sveltekit` passa da @sveltejs/kit 3.0.0 alla 3.1.1, che chiude le due falle gravi segnalate dal controllo delle dipendenze (GHSA-m9j8-jcmv-hp69, segreti del server che potevano finire nel codice del browser; GHSA-3r8g-jcqq-3p5j, blocco del server leggendo i dati dei form delle funzioni remote) e tre falle moderate. La 3.1.1 dichiara le stesse dipendenze della 3.0.0, quindi nel lockfile cambia solo SvelteKit, senza override. La prova automatica, l'etichetta di versione dell'esempio e la tabella in `docs/svelte-sveltekit.md` dicono 3.1.1; la tabella ora riporta anche Vite 8.3.3, la versione che l'esempio usa davvero. Il pacchetto pubblicato non cambia. (CYJS-90)
+
 ## [0.17.1] - 2026-11-13
 
 ### Fixed

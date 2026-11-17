@@ -8,7 +8,7 @@ These optional entries observe an application's chosen error policy and request 
 | --------------- | ----------------------------------------------------------------------------------------- | ------------------------------------ |
 | Svelte boundary | Svelte 5.57.1, Vite 8.3.2, plugin 7.3.1                                                   | Node 24.21.0 build; Chromium browser |
 | SvelteKit 2     | Kit 2.70.3, Svelte 5.57.1, adapter-node 5.5.7, Vite 7.3.6, plugin 6.2.4, TypeScript 6.0.3 | Node 24.21.0                         |
-| SvelteKit 3     | Kit 3.0.0, Svelte 5.57.1, adapter-node 6.0.0, Vite 8.3.2, plugin 7.3.1, TypeScript 6.0.3  | Node 24.21.0                         |
+| SvelteKit 3     | Kit 3.1.1, Svelte 5.57.1, adapter-node 6.0.0, Vite 8.3.3, plugin 7.3.1, TypeScript 6.0.3  | Node 24.21.0                         |
 
 These are local unpublished candidate observations, not a registry release or a claim for all compatible peer versions. Kit 3 requires Node >=22.17; the selected Kit 2 build tools require Node 20.19 or an admitted newer branch. The SDK's own Node 20.16 minimum does not imply framework support on that runtime. Svelte 4, edge runtimes, other adapters and remote functions are not included.
 

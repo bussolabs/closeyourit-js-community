@@ -130,7 +130,7 @@ try {
     )[0]
     artifact = join(workspace, packed.filename)
   }
-  for (const version of ['2.70.3', '3.0.0']) {
+  for (const version of ['2.70.3', '3.1.1']) {
     const app = join(workspace, version)
     cpSync(join(repo, 'examples/sveltekit'), app, { recursive: true })
     if (version.startsWith('2.')) {
